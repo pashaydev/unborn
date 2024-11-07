@@ -1,0 +1,20 @@
+{
+    "name": "tbot",
+    "version": "1.0.0",
+    "main": "index.js",
+    "type": "module",
+    "scripts": {
+        "start": "node ./src/index.js",
+        "docker:build": "docker build -t tbot . && docker run -p 49160:8080 -d tbot"
+    },
+    "author": "",
+    "license": "ISC",
+    "description": "",
+    "dependencies": {
+        "@anthropic-ai/sdk": "^0.32.1",
+        "dotenv": "^16.4.5",
+        "officeparser": "^5.0.0",
+        "sqlite3": "^5.1.7",
+        "telegraf": "^4.16.3"
+    }
+}
