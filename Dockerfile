@@ -25,7 +25,6 @@ COPY src/ ./src
 # Copy environment file
 COPY .env ./.env
 
-
 # Copy database file
 COPY db.sqlite ./db.sqlite
 

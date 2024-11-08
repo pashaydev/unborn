@@ -140,7 +140,7 @@ bot.action("lazywtf", ctx => {
             });
 
             ctx.reply(`AI Response: ${aiRes}`);
-            sendMenu(ctx);
+            sendMenu(ctx, "");
         });
     });
 });
