@@ -21,6 +21,7 @@ This project is a Node.js-based Telegram bot that utilizes SQLite3 for database 
     ```sh
     export BOT_TOKEN=your-telegram-bot-token
     export ANTHROPIC_API_KEY=your-anthropic-api-key
+    export ANTHROPIC_API_KEY=reddit-api-url
     ```
 
 ## Usage
@@ -38,16 +39,6 @@ Feel free to submit issues and pull requests. Contributions are welcome!
 ## License
 
 This project is licensed under the MIT License.
-
-## Configuration
-
-Ensure you have the following environment variables set in your `.env` file:
-
-```
-BOT_TOKEN=your-telegram-bot-token
-ANTHROPIC_API_KEY=your-anthropic-api-key
-REDDIT_API_URL=desired-reddit-group+pagination
-```
 
 ## Running Tests
 
