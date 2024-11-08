@@ -1,3 +1,11 @@
+/**
+ * @fileoverview Telegram bot that processes document files and interacts with Claude AI
+ * @requires telegraf
+ * @requires @anthropic-ai/sdk
+ * @requires officeparser
+ * @requires dotenv
+ */
+
 import { Telegraf } from "telegraf";
 import { message } from "telegraf/filters";
 import dotenv from "dotenv";
@@ -7,12 +15,25 @@ import { parseOfficeAsync } from "officeparser";
 
 dotenv.config();
 
+/**
+ * @type {Telegraf}
+ * @description Telegram bot instance
+ */
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
+/**
+ * @type {Anthropic}
+ * @description Anthropic API client instance
+ */
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+/**
+ * Sends menu with available options to the user
+ * @param {import('telegraf').Context} ctx - Telegram context
+ * @param {string} [text="Choose options bellow."] - Optional custom message
+ */
 const sendMenu = (ctx, text = "Choose options bellow.") => {
     ctx.reply(text, {
         reply_markup: {
@@ -28,25 +49,36 @@ const sendMenu = (ctx, text = "Choose options bellow.") => {
     });
 };
 
+/**
+ * @type {Object.<number, {fileId: string, fileType: string}>}
+ * @description Stores temporary message data indexed by user ID
+ */
+const messageHash = {};
+
 bot.start(ctx => {
     sendMenu(ctx);
 });
 
-const messageHash = {};
-
+/**
+ * Handles the "lazywtf" callback action
+ * Sets up document and text message handlers
+ */
 bot.action("lazywtf", ctx => {
     ctx.reply("Send me a file. (.docx, .txt, .xlsx)");
 
+    /**
+     * Handles document messages
+     * @param {import('telegraf').Context} ctx - Telegram context
+     */
     bot.on(message("document"), ctx => {
-        // validate file type, should be a .txt, .pdf, .docx, or .doc file
         const fileType = ctx.message.document.mime_type;
-        if (
-            ![
-                "text/plain",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            ].includes(fileType)
-        ) {
+        const validTypes = [
+            "text/plain",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ];
+
+        if (!validTypes.includes(fileType)) {
             ctx.reply("Invalid file type. Please send a .txt, .pdf, .docx, or .doc file.");
             return sendMenu(
                 ctx,
@@ -65,7 +97,6 @@ bot.action("lazywtf", ctx => {
             botResponse: `File ID: ${ctx.message.document.file_id}`,
         });
 
-        // check if text was already attached to file message
         if (ctx.message.caption) {
             const userText = ctx.message.caption;
             handleFinishLazyWtf({ userText, ctx });
@@ -74,12 +105,22 @@ bot.action("lazywtf", ctx => {
         }
     });
 
+    /**
+     * Handles text messages
+     * @param {import('telegraf').Context} ctx - Telegram context
+     */
     bot.on(message("text"), async ctx => {
         const userText = ctx.message.text;
         handleFinishLazyWtf({ userText, ctx });
     });
 });
 
+/**
+ * Processes file and user text, then generates AI response
+ * @param {Object} params - Parameters object
+ * @param {string} params.userText - Text message from user
+ * @param {import('telegraf').Context} params.ctx - Telegram context
+ */
 const handleFinishLazyWtf = async ({ userText, ctx }) => {
     const fileData = messageHash[ctx.from.id];
 
@@ -101,14 +142,12 @@ const handleFinishLazyWtf = async ({ userText, ctx }) => {
         botResponse: userText,
     });
 
-    // check user input text length, should be less than 150_000 characters
     if (userText.length > 150_000) {
         return ctx.reply("Text is too long. Please send text with less than 1024 characters.");
     }
 
     let aiRes = "";
     try {
-        // send a loading message
         ctx.reply("Processing...");
 
         const msg = await anthropic.messages.create({
@@ -155,52 +194,57 @@ const handleFinishLazyWtf = async ({ userText, ctx }) => {
     sendMenu(ctx, "Congrats, you got a response.");
 };
 
-bot.launch();
-
-// File parsing related functions
+/**
+ * Parses different types of files and returns their content
+ * @param {string} fileId - Telegram file ID
+ * @param {string} fileType - MIME type of the file
+ * @returns {Promise<string>} Parsed file content
+ */
 const parseFile = async (fileId, fileType) => {
     try {
         const fileLink = await bot.telegram.getFileLink(fileId);
-
         const fileBlob = await fetch(fileLink);
 
         const handle = {
-            // txt
+            /**
+             * Handles text files
+             * @param {Blob} fileBlob - File blob
+             * @returns {Promise<string>} File content
+             */
             "text/plain": async fileBlob => {
                 const fileBuffer = await fileBlob.arrayBuffer();
                 const fileContent = new TextDecoder().decode(fileBuffer);
-
                 return fileContent;
             },
-            // docx
+
+            /**
+             * Handles DOCX files
+             * @param {Blob} fileBlob - File blob
+             * @returns {Promise<string>} Parsed document content
+             */
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
                 async fileBlob => {
                     try {
                         const buffer = await fileBlob.arrayBuffer();
-
                         const fileBuffer = Buffer.from(buffer);
-
                         const data = await parseOfficeAsync(fileBuffer);
-
-                        const fileContent = data.toString();
-
-                        return fileContent;
+                        return data.toString();
                     } catch (error) {
                         console.error("Error parsing file:", error);
                     }
                 },
-            // xlsx
+
+            /**
+             * Handles XLSX files
+             * @param {Blob} fileBlob - File blob
+             * @returns {Promise<string>} Parsed spreadsheet content
+             */
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": async fileBlob => {
                 try {
                     const buffer = await fileBlob.arrayBuffer();
-
                     const fileBuffer = Buffer.from(buffer);
-
                     const data = await parseOfficeAsync(fileBuffer);
-
-                    const fileContent = data.toString();
-
-                    return fileContent;
+                    return data.toString();
                 } catch (error) {
                     console.error("Error parsing file:", error);
                 }
@@ -217,5 +261,13 @@ const parseFile = async (fileId, fileType) => {
     }
 };
 
-// DB related functions
+/**
+ * Saves interaction history to database
+ * @param {Object} args - History entry parameters
+ * @param {number} args.userId - Telegram user ID
+ * @param {string} args.userInput - User's input
+ * @param {string} args.botResponse - Bot's response
+ */
 const saveHistory = args => insertHistory(args, db);
+
+bot.launch();
