@@ -22,15 +22,6 @@ export const insertHistory = ({ userInput, botResponse, userId }, db) => {
 
 db.serialize(() => {
     db.run(DB_CREATION_QUERY);
-
-    insertHistory(
-        {
-            userInput: "Hello",
-            botResponse: "Hi",
-            userId: 1,
-        },
-        db
-    );
 });
 
 db.on("error", err => {

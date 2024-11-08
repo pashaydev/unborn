@@ -43,6 +43,10 @@ const sendMenu = (ctx, text = "Choose options bellow.") => {
                         text: "AI halp please",
                         callback_data: "lazywtf",
                     },
+                    {
+                        text: "Random meme",
+                        callback_data: "mem",
+                    },
                 ],
             ],
         },
@@ -57,6 +61,66 @@ const messageHash = {};
 
 bot.start(ctx => {
     sendMenu(ctx);
+});
+
+/**
+ * Handles the "/help" command
+ * @param {import('telegraf').Context} ctx - Telegram context
+ * @description Sends help message to the user
+ * @returns {Promise<void>}
+ */
+bot.command("help", ctx => {
+    ctx.reply(
+        "This bot can generate AI responses based on text and document files. To get started, send a file and then some text."
+    );
+    sendMenu(ctx);
+});
+
+/**
+ * Handles action mem from reddit
+ * @param {import('telegraf').Context} ctx - Telegram context
+ * @description Sends a random meme from Reddit
+ * @returns {Promise<void>}
+ */
+bot.action("mem", async ctx => {
+    ctx.reply("Processing...");
+    try {
+        let success = false;
+        let attempts = 0;
+
+        let response;
+        while (!success && attempts < 5) {
+            response = await fetch(
+                "https://www.reddit.com/r/ProgrammerHumor.json?limit=1000&sort=new",
+                {
+                    method: "GET",
+                    headers: {
+                        "User-Agent": "Mozilla/5.0",
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+            if (response.ok) {
+                success = true;
+            }
+            attempts++;
+        }
+
+        if (!response.ok) {
+            ctx.reply("Failed to fetch meme");
+            return;
+        }
+        const data = await response.json();
+
+        const posts = data.data.children;
+        const randomPost = posts[Math.floor(Math.random() * posts.length)];
+
+        if (randomPost.data.url) {
+            ctx.reply(randomPost.data.url);
+        }
+    } catch (error) {
+        ctx.reply("Failed to fetch meme");
+    }
 });
 
 /**
@@ -82,7 +146,7 @@ bot.action("lazywtf", ctx => {
             ctx.reply("Invalid file type. Please send a .txt, .pdf, .docx, or .doc file.");
             return sendMenu(
                 ctx,
-                "Interesting fact: people who send wrong file usually have small pp. (personal preference - not read accepted formats)"
+                "Interesting fact: people who send wrong file usually not read accepted formats"
             );
         }
 
