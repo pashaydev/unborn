@@ -53,11 +53,3 @@ npm test
 ```sh
 npm run docker:build
 ```
-
-## Support
-
-If you encounter any issues or have questions, feel free to open an issue on the GitHub repository.
-
-## Acknowledgements
-
-Special thanks to the contributors and the open-source community for their invaluable support.
