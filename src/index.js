@@ -108,7 +108,7 @@ bot.action("mem", async ctx => {
 
         if (!response.ok) {
             ctx.reply("Failed to fetch meme");
-            return;
+            return sendMenu(ctx, "Here we go again.");
         }
         const data = await response.json();
 
@@ -118,6 +118,8 @@ bot.action("mem", async ctx => {
         if (randomPost.data.url) {
             ctx.reply(randomPost.data.url);
         }
+
+        return sendMenu(ctx, "Continue");
     } catch (error) {
         ctx.reply("Failed to fetch meme");
     }
