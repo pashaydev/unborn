@@ -90,16 +90,13 @@ bot.action("mem", async ctx => {
 
         let response;
         while (!success && attempts < 5) {
-            response = await fetch(
-                "https://www.reddit.com/r/ProgrammerHumor.json?limit=1000&sort=new",
-                {
-                    method: "GET",
-                    headers: {
-                        "User-Agent": "Mozilla/5.0",
-                        "Content-Type": "application/json",
-                    },
-                }
-            );
+            response = await fetch(process.env.REDDIT_API_URL, {
+                method: "GET",
+                headers: {
+                    "User-Agent": "Mozilla/5.0",
+                    "Content-Type": "application/json",
+                },
+            });
             if (response.ok) {
                 success = true;
             }
@@ -129,12 +126,20 @@ bot.action("mem", async ctx => {
         insertHistory({
             userId: ctx.from.id,
             userInput: "Random meme",
-            botResponse: randomPost.data.url,
+            botResponse: randomPost?.data?.url,
         });
 
-        return sendMenu(ctx, "Continue");
+        sendMenu(ctx, "Continue");
     } catch (error) {
-        ctx.reply("Failed to fetch meme");
+        console.error(error);
+
+        insertHistory({
+            userId: ctx.from.id,
+            userInput: "",
+            botResponse: `Error: ${error.message}`,
+        });
+
+        sendMenu(ctx, "Here we go again.");
     }
 });
 

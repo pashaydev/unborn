@@ -47,6 +47,21 @@ test("insertHistory inserts a record into the history table", async t => {
     await new Promise(resolve => db.close(resolve));
 });
 
+test("Reddit API", async t => {
+    const url = process.env.REDDIT_API_URL;
+
+    await t.test("Reddit API should be reachable", async t => {
+        let attempts = 0;
+        let response;
+        while (attempts < 5) {
+            response = await fetch(url);
+            if (response.ok) break;
+            attempts++;
+        }
+        assert.ok(response.ok, "API should be reachable after 5 attempts");
+    });
+});
+
 test("Telegram Bot", async t => {
     await t.test("Bot should have valid token", async t => {
         // Create bot instance with mocked methods

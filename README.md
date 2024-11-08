@@ -46,6 +46,7 @@ Ensure you have the following environment variables set in your `.env` file:
 ```
 BOT_TOKEN=your-telegram-bot-token
 ANTHROPIC_API_KEY=your-anthropic-api-key
+REDDIT_API_URL=desired-reddit-group+pagination
 ```
 
 ## Running Tests
