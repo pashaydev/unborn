@@ -59,8 +59,17 @@ const sendMenu = (ctx, text = "Choose options bellow.") => {
  */
 const messageHash = {};
 
-bot.start(ctx => {
-    sendMenu(ctx);
+/**
+ * @description add menu to the bot
+ */
+bot.telegram.setMyCommands([
+    { command: "/help", description: "Get help" },
+    { command: "/start", description: "Start the bot" },
+]);
+
+bot.command("start", ctx => {
+    ctx.reply("Welcome to the bot!");
+    sendMenu(ctx, "Choose options bellow.");
 });
 
 /**
@@ -106,11 +115,14 @@ bot.action("mem", async ctx => {
         if (!response.ok) {
             ctx.reply("Failed to fetch meme");
 
-            insertHistory({
-                userId: ctx.from.id,
-                userInput: "Failed to fetch meme",
-                botResponse: "Failed to fetch meme",
-            });
+            insertHistory(
+                {
+                    userId: ctx.from.id,
+                    userInput: "Failed to fetch meme",
+                    botResponse: "Failed to fetch meme",
+                },
+                db
+            );
 
             return sendMenu(ctx, "Here we go again.");
         }
@@ -123,21 +135,27 @@ bot.action("mem", async ctx => {
             ctx.reply(randomPost.data.url);
         }
 
-        insertHistory({
-            userId: ctx.from.id,
-            userInput: "Random meme",
-            botResponse: randomPost?.data?.url,
-        });
+        insertHistory(
+            {
+                userId: ctx.from.id,
+                userInput: "Random meme",
+                botResponse: randomPost?.data?.url,
+            },
+            db
+        );
 
         sendMenu(ctx, "Continue");
     } catch (error) {
         console.error(error);
 
-        insertHistory({
-            userId: ctx.from.id,
-            userInput: "",
-            botResponse: `Error: ${error.message}`,
-        });
+        insertHistory(
+            {
+                userId: ctx.from.id,
+                userInput: "",
+                botResponse: `Error: ${error.message}`,
+            },
+            db
+        );
 
         sendMenu(ctx, "Here we go again.");
     }
