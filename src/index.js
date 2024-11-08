@@ -108,6 +108,13 @@ bot.action("mem", async ctx => {
 
         if (!response.ok) {
             ctx.reply("Failed to fetch meme");
+
+            insertHistory({
+                userId: ctx.from.id,
+                userInput: "Failed to fetch meme",
+                botResponse: "Failed to fetch meme",
+            });
+
             return sendMenu(ctx, "Here we go again.");
         }
         const data = await response.json();
@@ -118,6 +125,12 @@ bot.action("mem", async ctx => {
         if (randomPost.data.url) {
             ctx.reply(randomPost.data.url);
         }
+
+        insertHistory({
+            userId: ctx.from.id,
+            userInput: "Random meme",
+            botResponse: randomPost.data.url,
+        });
 
         return sendMenu(ctx, "Continue");
     } catch (error) {
