@@ -2,7 +2,7 @@ import { Telegraf } from "telegraf";
 import { message } from "telegraf/filters";
 import dotenv from "dotenv";
 import Anthropic from "@anthropic-ai/sdk";
-import { insertHistory } from "./db.js";
+import { insertHistory, db } from "./db.js";
 import { parseOfficeAsync } from "officeparser";
 
 dotenv.config();
@@ -13,7 +13,7 @@ const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const sendMenu = (ctx, text = "Darava brodyaga, choose options bellow.") => {
+const sendMenu = (ctx, text = "Choose options bellow.") => {
     ctx.reply(text, {
         reply_markup: {
             inline_keyboard: [
@@ -31,6 +31,8 @@ const sendMenu = (ctx, text = "Darava brodyaga, choose options bellow.") => {
 bot.start(ctx => {
     sendMenu(ctx);
 });
+
+const messageHash = {};
 
 bot.action("lazywtf", ctx => {
     ctx.reply("Send me a file. (.docx, .txt, .xlsx)");
@@ -51,99 +53,112 @@ bot.action("lazywtf", ctx => {
                 "Interesting fact: people who send wrong file usually have small pp. (personal preference - not read accepted formats)"
             );
         }
+        // const fileSize = ctx.message.document.file_size;
+        // if (fileSize > 20 * 1024 * 1024) {
+        //     ctx.reply("File size is too large. Please send a file smaller than 20MB.");
+        //     return sendMenu(ctx, "bruh, is too much for me, i'm just a bot.");
+        // }
 
-        // check if file size is less than 5MB
-        const fileSize = ctx.message.document.file_size;
-        if (fileSize > 20 * 1024 * 1024) {
-            ctx.reply("File size is too large. Please send a file smaller than 20MB.");
-            return sendMenu(ctx, "bruh, is too much for me, i'm just a bot.");
-        }
-
-        const fileId = ctx.message.document.file_id;
+        messageHash[ctx.from.id] = {
+            fileId: ctx.message.document.file_id,
+            fileType,
+        };
 
         saveHistory({
             userId: ctx.from.id,
             userInput: "File received",
-            botResponse: `File ID: ${fileId}`,
+            botResponse: `File ID: ${ctx.message.document.file_id}`,
         });
 
-        ctx.reply("File received. Now, please send me some text.");
+        // check if text was already attached to file message
+        if (ctx.message.caption) {
+            const userText = ctx.message.caption;
+            handleFinishLazyWtf({ userText, ctx });
+        } else {
+            ctx.reply("File received. Now, please send me some text.");
+        }
+    });
 
-        const filePromise = parseFile(fileId, fileType);
-
-        bot.on(message("text"), async ctx => {
-            const userText = ctx.message.text;
-
-            console.log(`File ID: ${fileId}`);
-            console.log(`User Text: ${userText}`);
-
-            const fileContent = await filePromise;
-
-            console.log(`File Content: ${fileContent}`);
-
-            saveHistory({
-                userId: ctx.from.id,
-                userInput: "User text received",
-                botResponse: userText,
-            });
-
-            // check user input text length, should be less than 150_000 characters
-            if (userText.length > 150_000) {
-                return ctx.reply(
-                    "Text is too long. Please send text with less than 1024 characters."
-                );
-            }
-
-            let aiRes = "";
-            try {
-                // send a loading message
-                ctx.reply("Processing...");
-
-                const msg = await anthropic.messages.create({
-                    model: "claude-3-5-sonnet-20241022",
-                    max_tokens: 1024,
-                    messages: [
-                        {
-                            role: "assistant",
-                            content: `Be very skeptical and critical. You will be accepting 2 messages from user, 1st one is file content, second one is user text. You will be generating a response based on these 2 messages.`,
-                        },
-                        {
-                            role: "user",
-                            content: fileContent.slice(0, 2048),
-                        },
-                        {
-                            role: "user",
-                            content: userText,
-                        },
-                    ],
-                });
-
-                aiRes = msg.content[0].text;
-            } catch (err) {
-                console.log(err);
-                saveHistory({
-                    userId: ctx.from.id,
-                    userInput: "AI error",
-                    botResponse: `Error: ${err.message}`,
-                });
-            }
-
-            if (!aiRes) {
-                ctx.reply("An error occurred. Please try again.");
-                return sendMenu(ctx);
-            }
-
-            saveHistory({
-                userId: ctx.from.id,
-                userInput: "AI response",
-                botResponse: aiRes,
-            });
-
-            ctx.reply(`AI Response: ${aiRes}`);
-            sendMenu(ctx, "");
-        });
+    bot.on(message("text"), async ctx => {
+        const userText = ctx.message.text;
+        handleFinishLazyWtf({ userText, ctx });
     });
 });
+
+const handleFinishLazyWtf = async ({ userText, ctx }) => {
+    const fileData = messageHash[ctx.from.id];
+
+    if (!fileData) {
+        ctx.reply("File not found. Please send a file first.");
+        return sendMenu(ctx, "bruh, you need to send file first.");
+    }
+
+    console.log(`File ID: ${fileData.fileId}`);
+    console.log(`User Text: ${userText}`);
+
+    const fileContent = await parseFile(fileData.fileId, fileData.fileType);
+
+    console.log(`File Content: ${fileContent}`);
+
+    saveHistory({
+        userId: ctx.from.id,
+        userInput: "User text received",
+        botResponse: userText,
+    });
+
+    // check user input text length, should be less than 150_000 characters
+    if (userText.length > 150_000) {
+        return ctx.reply("Text is too long. Please send text with less than 1024 characters.");
+    }
+
+    let aiRes = "";
+    try {
+        // send a loading message
+        ctx.reply("Processing...");
+
+        const msg = await anthropic.messages.create({
+            model: "claude-3-5-sonnet-20241022",
+            max_tokens: 1024,
+            messages: [
+                {
+                    role: "assistant",
+                    content: `Be very skeptical and critical. You will be accepting 2 messages from user, 1st one is file content, second one is user text. You will be generating a response based on these 2 messages.`,
+                },
+                {
+                    role: "user",
+                    content: fileContent.slice(0, 2048),
+                },
+                {
+                    role: "user",
+                    content: userText,
+                },
+            ],
+        });
+
+        aiRes = msg.content[0].text;
+    } catch (err) {
+        console.log(err);
+        saveHistory({
+            userId: ctx.from.id,
+            userInput: "AI error",
+            botResponse: `Error: ${err.message}`,
+        });
+    }
+
+    if (!aiRes) {
+        ctx.reply("An error occurred. Please try again.");
+        return sendMenu(ctx);
+    }
+
+    saveHistory({
+        userId: ctx.from.id,
+        userInput: "AI response",
+        botResponse: aiRes,
+    });
+
+    ctx.reply(`AI Response: ${aiRes}`);
+    sendMenu(ctx, "Congrats, you got a response.");
+};
 
 bot.launch();
 
@@ -208,4 +223,4 @@ const parseFile = async (fileId, fileType) => {
 };
 
 // DB related functions
-const saveHistory = args => insertHistory(args);
+const saveHistory = args => insertHistory(args, db);
