@@ -53,11 +53,6 @@ bot.action("lazywtf", ctx => {
                 "Interesting fact: people who send wrong file usually have small pp. (personal preference - not read accepted formats)"
             );
         }
-        // const fileSize = ctx.message.document.file_size;
-        // if (fileSize > 20 * 1024 * 1024) {
-        //     ctx.reply("File size is too large. Please send a file smaller than 20MB.");
-        //     return sendMenu(ctx, "bruh, is too much for me, i'm just a bot.");
-        // }
 
         messageHash[ctx.from.id] = {
             fileId: ctx.message.document.file_id,
