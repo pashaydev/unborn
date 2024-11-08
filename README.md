@@ -21,7 +21,7 @@ This project is a Node.js-based Telegram bot that utilizes SQLite3 for database 
     ```sh
     export BOT_TOKEN=your-telegram-bot-token
     export ANTHROPIC_API_KEY=your-anthropic-api-key
-    export ANTHROPIC_API_KEY=reddit-api-url
+    export REDDIT_API_URL=reddit-api-url
     ```
 
 ## Usage
