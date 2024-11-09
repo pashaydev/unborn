@@ -4,7 +4,7 @@
     "main": "index.js",
     "type": "module",
     "scripts": {
-        "start": "node ./src/index.js",
+        "start": "node ./src/bot.js",
         "docker:build": "docker build -t unborn . && docker run -p 49160:8080 -d unborn",
         "test": "node ./src/tests.js"
     },
@@ -13,7 +13,9 @@
     "description": "Telegram bot",
     "dependencies": {
         "@anthropic-ai/sdk": "^0.32.1",
+        "crypto": "^1.0.1",
         "dotenv": "^16.4.5",
+        "express": "^4.21.1",
         "officeparser": "^5.0.0",
         "sqlite3": "^5.1.7",
         "telegraf": "^4.16.3"
