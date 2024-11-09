@@ -64,4 +64,4 @@ EXPOSE 3000
 ENV SQLITE_DB_PATH=/usr/src/app/data/db.sqlite
 
 # Start command
-CMD ["node", "src/index.js"]
+CMD ["node", "src/bot.js"]
