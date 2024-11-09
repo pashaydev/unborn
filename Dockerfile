@@ -53,9 +53,6 @@ COPY .env ./.env
 # Create new db.sqlite file
 RUN touch db.sqlite
 
-# Copy database file
-COPY db.sqlite ./db.sqlite
-
 # Create data directory for SQLite database
 RUN mkdir -p /usr/src/app/data && \
     chmod 777 /usr/src/app/data
