@@ -1,6 +1,6 @@
 # Telegram Bot Project
 
-This project is a Node.js-based Telegram bot that utilizes SQLite3 for database management and Telegraph for simplified Telegram API interactions.
+This project is a Node.js-based Telegram bot that utilizes SQLite3 for database management and Telegraph for simplified Telegram API interactions
 
 ## Installation
 
