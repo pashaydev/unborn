@@ -1,6 +1,7 @@
 import { Markup } from "telegraf";
 import Anthropic from "@anthropic-ai/sdk";
 import { saveHistory } from "../db.js";
+import { message } from "telegraf/filters";
 
 export const BOARD_CONFIG = {
     FILES: "abcdefgh",
@@ -51,6 +52,32 @@ export default class ChessGameHandler {
         this.bot.action(/move_(.+)/, ctx => this.handleMove(ctx));
         this.bot.action("resign", ctx => this.handleResign(ctx));
         this.bot.action(/page_(\d+)/, ctx => this.handlePageChange(ctx));
+        // setup action for text command
+        this.bot.on(message("text"), ctx => this.handleTextCommand(ctx));
+    }
+
+    async handleTextCommand(ctx) {
+        const gameState = this.games.get(ctx.chat.id);
+
+        const isPlayerTurn = gameState.isPlayerTurn;
+        if (!isPlayerTurn) {
+            return await ctx.reply("Is not your turn!");
+        }
+        const text = ctx.message.text;
+        const validMoves = this.getValidMoves(gameState, gameState.playerColor);
+        const commandValid = validMoves.some(m => m === text.trim());
+        if (commandValid) {
+            await this.executeMove(gameState, text, ctx);
+            await this.handleAIResponse(gameState, ctx);
+        } else {
+            await ctx.reply(
+                `${this.parseMoveToReadable(
+                    text,
+                    gameState,
+                    gameState.playerColor
+                )}, is not valid move!`
+            );
+        }
     }
 
     initializeEmptyBoard() {
@@ -349,22 +376,20 @@ export default class ChessGameHandler {
     async handleAIResponse(gameState, ctx) {
         if (!gameState.isPlayerTurn) {
             const aiMove = await this.getAiMove(gameState);
-            await this.makeMove(gameState, aiMove);
-            await this.updateGameDisplay(
-                ctx,
-                `AI move: ${this.parseMoveToReadable(aiMove, gameState)}`,
-                gameState
+            await ctx.reply(
+                `AI move: ${this.parseMoveToReadable(aiMove, gameState, gameState.aiColor)}`
             );
+            await this.makeMove(gameState, aiMove);
+            await this.updateGameDisplay(ctx, ``, gameState);
         }
     }
 
     async executeMove(gameState, move, ctx) {
-        await this.makeMove(gameState, move);
-        await this.updateGameDisplay(
-            ctx,
-            `Your move: ${this.parseMoveToReadable(move, gameState)}`,
-            gameState
+        await ctx.reply(
+            `Your move: ${this.parseMoveToReadable(move, gameState, gameState.playerColor)}`
         );
+        await this.makeMove(gameState, move);
+        await this.updateGameDisplay(ctx, ``, gameState);
     }
 
     async handlePageChange(ctx) {
@@ -588,7 +613,9 @@ export default class ChessGameHandler {
 
         if (playerColor === "black") {
             const aiMove = await this.getAiMove(gameState);
-            await ctx.reply(`AI move: ${this.parseMoveToReadable(aiMove, gameState)}\n`);
+            await ctx.reply(
+                `AI move: ${this.parseMoveToReadable(aiMove, gameState, gameState.aiColor)}\n`
+            );
             await this.makeMove(gameState, aiMove);
             await ctx.reply(
                 `${this.renderBoard(gameState.board, gameState.lastMove)}`,
@@ -597,10 +624,10 @@ export default class ChessGameHandler {
         }
     }
 
-    parseMoveToReadable(move, gameState) {
+    parseMoveToReadable(move, gameState, color) {
         const [fromFile, fromRank, toFile, toRank] = move.split("");
-        const fromSquare = this.getSquareFromNotation(fromFile + fromRank, gameState.playerColor);
-        const toSquare = this.getSquareFromNotation(toFile + toRank, gameState.playerColor);
+        const fromSquare = this.getSquareFromNotation(fromFile + fromRank, color);
+        const toSquare = this.getSquareFromNotation(toFile + toRank, color);
         const piece = gameState.board[fromSquare[0]][fromSquare[1]];
 
         // Find the piece name by checking both WHITE and BLACK pieces
