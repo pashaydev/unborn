@@ -99,15 +99,20 @@ const sendMenu = (ctx, text = "Choose options bellow.") => {
             inline_keyboard: [
                 [
                     {
-                        text: "AI halp please",
-                        callback_data: "lazywtf",
+                        text: "AI docks parser",
+                        callback_data: "dockasker",
                     },
                     {
-                        text: "Random meme",
+                        text: "Random reddit post",
                         callback_data: "mem",
+                    },
+                    {
+                        text: "Play chess",
+                        callback_data: "chess",
                     },
                 ],
             ],
+            resize_keyboard: true,
         },
     });
 };
@@ -118,12 +123,17 @@ const sendMenu = (ctx, text = "Choose options bellow.") => {
 bot.telegram.setMyCommands([
     { command: "/help", description: "Get help" },
     { command: "/start", description: "Start the bot" },
+    { command: "/menu", description: "Show menu" },
 ]);
 
 // Register commands
 bot.command("start", ctx => {
     ctx.reply("Welcome to the bot!");
     sendMenu(ctx, "Choose options bellow.");
+});
+
+bot.command("menu", ctx => {
+    sendMenu(ctx);
 });
 
 /**
@@ -145,6 +155,7 @@ ActionFabric.anthropic = anthropic;
 ActionFabric.sendMenu = sendMenu;
 
 ActionFabric.createAction("mem");
-ActionFabric.createAction("lazywtf");
+ActionFabric.createAction("dockasker");
+ActionFabric.createAction("chess");
 
 export { bot, anthropic, sendMenu };

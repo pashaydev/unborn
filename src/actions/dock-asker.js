@@ -1,16 +1,15 @@
-// lazywtf.js
 import { saveHistory } from "../db.js"; // Added .js extension
 import { message } from "telegraf/filters";
 import { parseOfficeAsync } from "officeparser";
 
-export default class LazyWtfHandler {
+export default class DockAsker {
     // Changed to default export
     /**
      * @param {import('telegraf').Telegraf} bot - Telegraf instance
      * @param {object} anthropic - Anthropic client instance
      * @param {Function} sendMenu - Menu sending function
      * @description Handles the lazywtf action
-     * @constructor LazyWtfHandler
+     * @constructor DockAsker
      * @returns {void}
      */
     constructor(bot, anthropic, sendMenu) {
@@ -22,9 +21,8 @@ export default class LazyWtfHandler {
     }
 
     setupActions() {
-        this.bot.action("lazywtf", ctx => {
+        this.bot.action("dockasker", ctx => {
             ctx.reply("Send me a file. (.docx, .txt, .xlsx)");
-            // Moved handlers to class level to prevent multiple registrations
             this.setupMessageHandlers();
         });
     }
