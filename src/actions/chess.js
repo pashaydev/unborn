@@ -217,9 +217,7 @@ export default class ChessGameHandler {
             userInput: move,
             botResponse: `Player color: ${
                 gameState.playerColor
-            }; Move: ${move}; Board: ${JSON.stringify(
-                gameState.board
-            )}; Move history: ${gameState.moveHistory.join(", ")}`,
+            }; Move: ${move}; Move history: ${gameState.moveHistory.join(", ")}`,
         });
     }
 
