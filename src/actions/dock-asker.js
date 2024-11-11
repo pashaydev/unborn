@@ -3,14 +3,13 @@ import { message } from "telegraf/filters";
 import { parseOfficeAsync } from "officeparser";
 
 export default class DockAsker {
-    // Changed to default export
     /**
      * @param {import('telegraf').Telegraf} bot - Telegraf instance
      * @param {object} anthropic - Anthropic client instance
      * @param {Function} sendMenu - Menu sending function
-     * @description Handles the lazywtf action
+     * @description Handles the document parser and ai asking action
      * @constructor DockAsker
-     * @returns {void}
+     * @returns {DockAsker}
      */
     constructor(bot, anthropic, sendMenu) {
         this.bot = bot;

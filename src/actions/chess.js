@@ -49,11 +49,6 @@ export default class ChessGameHandler {
 
     setupBotActions() {
         this.bot.action("chess", ctx => this.startNewGame(ctx));
-        this.bot.action(/move_(.+)/, ctx => this.handleMove(ctx));
-        this.bot.action("resign", ctx => this.handleResign(ctx));
-        this.bot.action(/page_(\d+)/, ctx => this.handlePageChange(ctx));
-        // setup action for text command
-        this.bot.on(message("text"), ctx => this.handleTextCommand(ctx));
     }
 
     async handleTextCommand(ctx) {
@@ -622,6 +617,12 @@ export default class ChessGameHandler {
                 this.getMoveKeyboard(gameState)
             );
         }
+
+        this.bot.action(/move_(.+)/, ctx => this.handleMove(ctx));
+        this.bot.action("resign", ctx => this.handleResign(ctx));
+        this.bot.action(/page_(\d+)/, ctx => this.handlePageChange(ctx));
+        // setup action for text command
+        this.bot.on(message("text"), ctx => this.handleTextCommand(ctx));
     }
 
     parseMoveToReadable(move, gameState, color) {
