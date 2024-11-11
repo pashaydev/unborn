@@ -54,6 +54,11 @@ class GhostwriterHandler {
         });
     }
 
+    /**
+     * @param {import('telegraf').Context} ctx - Telegraf context
+     * @returns {Promise<void>}
+     * @description Handles the text message
+     */
     async handleTextMessage(ctx) {
         try {
             await ctx.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
@@ -70,7 +75,7 @@ class GhostwriterHandler {
         });
 
         if (userText.length > 150_000) {
-            return ctx.reply(
+            return await ctx.reply(
                 "Text is too long. Please send text with less than 150,000 characters."
             );
         }
@@ -109,7 +114,7 @@ class GhostwriterHandler {
         }
 
         if (!aiRes) {
-            ctx.reply("An error occurred. Please try again.");
+            await ctx.reply("An error occurred. Please try again.");
             return this.sendMenu(ctx);
         }
 
@@ -119,7 +124,7 @@ class GhostwriterHandler {
             botResponse: aiRes,
         });
 
-        ctx.telegram.sendMessage(ctx.chat.id, aiRes);
+        await ctx.telegram.sendMessage(ctx.chat.id, aiRes);
 
         this.messageHash[ctx.userId] = 1;
     }
