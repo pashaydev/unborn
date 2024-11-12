@@ -42,8 +42,8 @@ const initializeBotHandlers = async () => {
         { command: "/imagegen", description: "Generate image" },
     ]);
 
-    bot.command("start", ctx => {
-        ctx.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+    bot.command("start", async ctx => {
+        await ctx.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
         sendMenu(ctx, "Choose options bellow.");
     });
 
@@ -51,8 +51,8 @@ const initializeBotHandlers = async () => {
         sendMenu(ctx);
     });
 
-    bot.command("help", ctx => {
-        ctx.reply(
+    bot.command("help", async ctx => {
+        await ctx.reply(
             "This bot is a collection of various actions. You can choose an action from the menu below."
         );
         sendMenu(ctx);
@@ -92,7 +92,15 @@ const resetBot = async () => {
         initializeBotHandlers();
 
         // Setup webhook for the new instance
-        await setupWebhook();
+        const webhookUrl = await setupWebhook();
+
+        bot.start({
+            webhook: {
+                domain: webhookUrl,
+                port: PORT || 3000,
+                host: process.env.NODE_ENV === "production" ? "0.0.0.0" : "",
+            },
+        });
 
         console.log("Bot has been reset and reinitialized successfully!");
     } catch (error) {
@@ -137,7 +145,6 @@ const setupWebhook = async () => {
         await bot.telegram.deleteWebhook();
         const webhookUrl = `${DOMAIN}/webhook/${SECRET_PATH}`;
         await bot.telegram.setWebhook(webhookUrl, {
-            drop_pending_updates: true,
             allowed_updates: ["message", "callback_query"],
         });
         console.log("Webhook set successfully!");
@@ -145,10 +152,17 @@ const setupWebhook = async () => {
 
         const webhookInfo = await bot.telegram.getWebhookInfo();
         console.log("Webhook Info:", webhookInfo);
+
+        return webhookUrl;
     } catch (error) {
         console.error("Error setting webhook:", error);
     }
+    return "";
 };
+
+bot.catch((err, ctx) => {
+    console.error(`Error for ${ctx.updateType}`, err);
+});
 
 // Handle webhook requests
 fastify.post(`/webhook/${SECRET_PATH}`, (request, reply) => {
@@ -160,21 +174,40 @@ fastify.get("/", (req, res) => {
     res.send("Telegram Bot Webhook Server is running!");
 });
 
-// Error handler middleware
-fastify.setErrorHandler((error, req, res) => {
-    console.error("Error handler:", error);
-    res.send("An error occurred while processing your request.");
-});
-
-// Start the server and initialize the bot
-fastify.listen({ port: PORT }, async (err, address) => {
-    if (err) {
-        fastify.log.error(err);
+// Add request validation
+fastify.addHook("preHandler", async (request, reply) => {
+    // You could add validation here
+    if (!request.body) {
+        throw new Error("Missing body");
     }
-
-    console.log(`Server is running on port ${PORT}`);
-    await resetBot(); // Initial bot setup
 });
 
-// Export bot instance and utilities
-export { bot, anthropic, sendMenu, resetBot };
+// Error handling
+fastify.setErrorHandler((error, request, reply) => {
+    fastify.log.error(error);
+    reply.status(500).send({ error: "Something went wrong" });
+});
+
+// Start server
+const start = async () => {
+    try {
+        fastify.listen(
+            {
+                port: PORT || 3000,
+                host: process.env.NODE_ENV === "production" ? "0.0.0.0" : "",
+            },
+            async (err, address) => {
+                if (err) {
+                    fastify.log.error(err);
+                }
+                fastify.log.info(`Server listening on ${address}`);
+                await resetBot();
+            }
+        );
+    } catch (err) {
+        fastify.log.error(err);
+        process.exit(1);
+    }
+};
+
+start();

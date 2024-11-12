@@ -4,9 +4,9 @@
     "main": "index.js",
     "type": "module",
     "scripts": {
-        "start": "node ./src/bot.js",
+        "start": "bun ./src/bot.js",
         "docker:build": "docker build -t unborn . && docker run -p 49160:8080 -d unborn",
-        "test": "node ./src/tests.js"
+        "test": "bun test"
     },
     "author": "PashaYakubovsky",
     "license": "ISC",
@@ -20,5 +20,8 @@
         "openai": "^4.71.1",
         "sqlite3": "^5.1.7",
         "telegraf": "^4.16.3"
+    },
+    "devDependencies": {
+        "@types/bun": "^1.1.13"
     }
 }

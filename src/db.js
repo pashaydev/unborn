@@ -1,32 +1,19 @@
-import sqlite3 from "sqlite3";
-sqlite3.verbose();
+import { Database } from "bun:sqlite";
 
 export const HISTORY_INSERT_QUERY =
     "INSERT INTO history (user_id, user_input, bot_response) VALUES (?, ?, ?)";
 export const DB_CREATION_QUERY =
     "CREATE TABLE IF NOT EXISTS history (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, user_input TEXT, bot_response TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)";
 
-export const db = new sqlite3.Database("db.sqlite");
+export const db = new Database("db.sqlite");
+db.query(DB_CREATION_QUERY);
 
 export const insertHistory = ({ userInput, botResponse, userId }, db) => {
-    db.run(HISTORY_INSERT_QUERY, [userId, userInput, botResponse], err => {
-        if (err) {
-            console.error(err);
-        }
-    });
+    db.query(HISTORY_INSERT_QUERY).run(...[userId, userInput, botResponse]);
 
-    db.each("SELECT id, user_input, bot_response, timestamp FROM history", (err, row) => {
-        console.log(`${row.id}: ${row.user_input} -> ${row.bot_response} at ${row.timestamp}`);
-    });
+    const items = db.query("SELECT * FROM history").all();
+    console.log(items, "Items in the database");
 };
-
-db.serialize(() => {
-    db.run(DB_CREATION_QUERY);
-});
-
-db.on("error", err => {
-    console.error(err);
-});
 
 /**
  * Saves interaction history to database

@@ -1,67 +1,31 @@
-# Build and test stage
-FROM node:20-slim AS builder
-
-# Install build dependencies for SQLite3
-RUN apt-get update && apt-get install -y \
-    python3 \
-    make \
-    g++ \
-    pkg-config \
-    sqlite3 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create app directory
+FROM oven/bun:1 AS base
 WORKDIR /usr/src/app
 
-# Copy package files
-COPY package*.json ./
+# install dependencies into temp directory
+FROM base AS install
+RUN mkdir -p /temp/dev
+COPY package.json bun.lockb /temp/dev/
+RUN cd /temp/dev && bun install --frozen-lockfile
 
-# Install dependencies
-RUN npm install
+# install with --production
+RUN mkdir -p /temp/prod
+COPY package.json bun.lockb /temp/prod/
+RUN cd /temp/prod && bun install --frozen-lockfile --production
 
-# Copy app source and test files
+# copy node_modules from temp directory
+FROM base AS prerelease
+COPY --from=install /temp/dev/node_modules node_modules
 COPY . .
 
-# Run tests with forced output
-ENV NPM_CONFIG_LOGLEVEL=verbose
-ENV CI=true
-CMD ["sh", "-c", "npm test | cat"]
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOST=0.0.0.0
 
-# Production stage
-FROM node:20-slim
+# [optional] tests
+RUN bun test
 
-# Install production dependencies for SQLite3
-RUN apt-get update && apt-get install -y \
-    sqlite3 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create app directory
-WORKDIR /usr/src/app
-
-# Copy package files
-COPY package*.json ./
-
-# Install production dependencies only
-RUN npm ci --only=production
-
-# Copy app source from builder stage
-COPY --from=builder /usr/src/app/src ./src
-
-# Copy environment file
-COPY .env ./.env
-
-# Create new db.sqlite file
-RUN touch db.sqlite
-
-# Create data directory for SQLite database
-RUN mkdir -p /usr/src/app/data && \
-    chmod 777 /usr/src/app/data
-
-# Expose port (change if your app uses a different port)
-EXPOSE 3000
-
-# Set database path environment variable
-ENV SQLITE_DB_PATH=/usr/src/app/data/db.sqlite
-
-# Start command
-CMD ["node", "src/bot.js"]
+# run the app
+USER bun
+EXPOSE 3000/tcp
+ENTRYPOINT [ "bun", "run", "src/bot.js" ]

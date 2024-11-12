@@ -1,7 +1,6 @@
 import assert from "node:assert";
-import test, { describe, it } from "node:test";
-import sqlite3 from "sqlite3";
-import { promisify } from "util";
+import { test, describe, it, beforeEach, expect } from "bun:test";
+import { Database } from "bun:sqlite";
 import { DB_CREATION_QUERY } from "./db.js";
 
 import Anthropic from "@anthropic-ai/sdk";
@@ -12,105 +11,96 @@ import ChessGameHandler, { BOARD_CONFIG } from "./actions/chess.js";
 
 configDotenv();
 
-sqlite3.verbose();
-
-test("insertHistory inserts a record into the history table", async t => {
+test("insertHistory inserts a record into the history table", async () => {
     const { insertHistory } = await import("./db.js");
 
-    const db = new sqlite3.Database(":memory:");
+    const db = new Database(":memory:", {
+        verbose: console.log,
+        readwrite: true,
+    });
 
-    // Promisify database operations
-    const run = promisify(db.run.bind(db));
-    const get = promisify(db.get.bind(db));
-
-    await run(DB_CREATION_QUERY);
+    // Create the history table
+    db.query(DB_CREATION_QUERY).run();
 
     const id = Math.floor(Math.random() * 1000);
+    const record = {
+        userId: id,
+        userInput: "Hello",
+        botResponse: "Hi",
+    };
 
-    insertHistory(
-        {
-            userInput: "Hello",
-            botResponse: "Hi",
-            userId: id,
-        },
-        db
-    ); // Pass db instance to insertHistory
+    insertHistory(record, db); // Pass db instance to insertHistory
 
-    const row = await get("SELECT * FROM history WHERE user_id = ?", id);
+    const row = db.query("SELECT * FROM history WHERE user_id = ?").get(id);
 
-    assert.ok(row, "Row should exist in the database");
-    assert.equal(row.user_input, "Hello", "User input should match");
-    assert.equal(row.bot_response, "Hi", "Bot response should match");
-    assert.equal(row.user_id, id, "User ID should match");
+    expect(row).toBeTruthy();
+    expect(row.user_input).toBe(record.userInput);
+    expect(row.bot_response).toBe(record.botResponse);
+    expect(row.user_id).toBe(id);
 
     // delete the record
-    await run("DELETE FROM history WHERE user_id = ?", id);
+    db.query("DELETE FROM history WHERE user_id = ?").run(id);
 
-    await new Promise(resolve => db.close(resolve));
+    // close the database
+    db.close();
 });
 
-test("Reddit API", async t => {
+test("Reddit API should return a valid response", async () => {
     const url = process.env.REDDIT_API_URL + "ProgrammerHumor.json";
 
-    await t.test("Reddit API should be reachable", async t => {
-        let attempts = 0;
-        let response;
-        while (attempts < 5) {
-            response = await fetch(url);
-            if (response.ok) break;
-            attempts++;
-        }
-        assert.ok(response.ok, "API should be reachable after 5 attempts");
-    });
+    let attempts = 0;
+    let response;
+    while (attempts < 5) {
+        response = await fetch(url);
+        if (response.ok) break;
+        attempts++;
+    }
+
+    expect(response.ok).toBe(true);
 });
 
-test("Telegram Bot", async t => {
-    await t.test("Bot should have valid token", async t => {
-        // Create bot instance with mocked methods
-        const bot = new Telegraf(process.env.BOT_TOKEN);
-        assert.ok(bot.token, "Bot should have a token");
-    });
-
-    await t.test("AI integration", async t => {
-        await t.test("should process Antropic API response correctly", async t => {
-            const anthropic = new Anthropic({
-                apiKey: process.env.ANTHROPIC_API_KEY,
-            });
-
-            const response = await anthropic.messages.create({
-                model: "claude-3-5-sonnet-20241022",
-                max_tokens: 1024,
-                messages: [
-                    {
-                        role: "user",
-                        content: "hello",
-                    },
-                ],
-            });
-
-            assert.ok(response, "Response should exist");
-            assert.ok(response.content[0].text, "Response data should exist");
-        });
-    });
-
-    await t.test("should process OpenAI API correctly", async t => {
-        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-        const completion = await openai.chat.completions.create({
-            model: "gpt-4o",
-            messages: [
-                {
-                    role: "user",
-                    content: "hello",
-                },
-            ],
-        });
-
-        let aiRes = completion.choices[0].message.content;
-        assert.ok(aiRes, "Response should exist");
-    });
+test("Bot should have valid token", async () => {
+    // Create bot instance with mocked methods
+    const bot = new Telegraf(process.env.BOT_TOKEN);
+    expect(bot.token).toBeTruthy();
 });
 
-test("Chess game", async t => {
+test("should process Antropic API response correctly", async () => {
+    const anthropic = new Anthropic({
+        apiKey: process.env.ANTHROPIC_API_KEY,
+    });
+
+    const response = await anthropic.messages.create({
+        model: "claude-3-5-sonnet-20241022",
+        max_tokens: 1024,
+        messages: [
+            {
+                role: "user",
+                content: "hello",
+            },
+        ],
+    });
+
+    expect(response, "Response should exist").toBeTruthy();
+    expect(response.content[0].text, "Response data should exist").toBeString();
+});
+
+test("should process OpenAI API correctly", async () => {
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+            {
+                role: "user",
+                content: "hello",
+            },
+        ],
+    });
+
+    let aiRes = completion.choices[0].message.content;
+    expect(aiRes, "Response should exist").toBeString();
+});
+test("Chess game", async () => {
     let handler;
 
     // Mock dependencies
@@ -129,11 +119,11 @@ test("Chess game", async t => {
     const mockSendMenu = () => {};
 
     // Setup
-    t.beforeEach(() => {
+    beforeEach(() => {
         handler = new ChessGameHandler(mockBot, mockAnthropic, mockSendMenu);
     });
 
-    await describe("Board Initialization", async t => {
+    describe("Board Initialization", async t => {
         it("should initialize board correctly", () => {
             const board = handler.initializeBoard();
             assert.equal(board.length, 8);
@@ -147,7 +137,7 @@ test("Chess game", async t => {
         });
     });
 
-    await describe("Piece Movement Validation", async t => {
+    describe("Piece Movement Validation", async t => {
         it("should validate pawn moves correctly", () => {
             const gameState = {
                 board: handler.initializeBoard(),
@@ -178,7 +168,7 @@ test("Chess game", async t => {
         });
     });
 
-    await describe("Move Execution", async t => {
+    describe("Move Execution", async t => {
         it("should execute valid moves", async () => {
             const gameState = {
                 board: handler.initializeBoard(),
@@ -195,7 +185,7 @@ test("Chess game", async t => {
         });
     });
 
-    await describe("Game State Check", async t => {
+    describe("Game State Check", async t => {
         it("should detect check correctly", () => {
             const gameState = {
                 board: handler.initializeEmptyBoard(),
@@ -213,7 +203,7 @@ test("Chess game", async t => {
         });
     });
 
-    await describe("Board Notation", async t => {
+    describe("Board Notation", async t => {
         it("should convert between board coordinates and chess notation", () => {
             const [rank, file] = handler.getSquareFromNotation("e2", "white");
             assert.equal(rank, 6);
@@ -231,7 +221,7 @@ test("Chess game", async t => {
         });
     });
 
-    await describe("Move Generation", async t => {
+    describe("Move Generation", async t => {
         it("should generate valid moves for all pieces", () => {
             const gameState = {
                 board: handler.initializeBoard(),
@@ -247,7 +237,7 @@ test("Chess game", async t => {
         });
     });
 
-    await describe("AI Move Generation", async t => {
+    describe("AI Move Generation", async t => {
         it("should generate valid AI moves", async () => {
             const gameState = {
                 board: handler.initializeBoard(),
