@@ -55,10 +55,6 @@ export default class RedditHandler {
      * @description Sends menu to user
      */
     async handleInitAction(ctx) {
-        if (!this.responseHash[ctx.from.id]) {
-            this.responseHash[ctx.from.id] = [];
-        }
-
         await ctx.reply("Choose", {
             reply_markup: {
                 inline_keyboard: [
@@ -120,6 +116,9 @@ export default class RedditHandler {
      */
     async handleMemAction(ctx, redditGroup) {
         const loadMsg = await ctx.reply("Processing...");
+        if (!this.responseHash[ctx.from.id]) {
+            this.responseHash[ctx.from.id] = [];
+        }
 
         try {
             const data = await this.fetchMeme(redditGroup + this.params);

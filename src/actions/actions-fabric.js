@@ -2,6 +2,7 @@ import ChessGameHandler from "./chess.js";
 import DockAsker from "./dock-asker.js";
 import GhostwriterHandler from "./ghostwriter.js";
 import RedditHandler from "./reddit.js";
+import ImagegenHandler from "./imagegen.js";
 
 class ActionFabric {
     /**
@@ -18,8 +19,8 @@ class ActionFabric {
 
     /**
      * @description Create action
-     * @param {'dockasker' | "reddit" | "chess"} actionName
-     * @returns {DockAsker | RedditHandler | ChessGameHandler}
+     * @param {'dockasker' | "reddit" | "chess" | "imagegen" | "ghostwriter"} actionName
+     * @returns {DockAsker | RedditHandler | ChessGameHandler | ImagegenHandler | GhostwriterHandler}
      */
     static createAction(actionName) {
         const args = [this.bot, this.anthropic, this.sendMenu, this.openai];
@@ -34,6 +35,9 @@ class ActionFabric {
         }
         if (actionName === "ghostwriter") {
             return new GhostwriterHandler(...args);
+        }
+        if (actionName === "imagegen") {
+            return new ImagegenHandler(this.bot, this.sendMenu);
         }
     }
 }

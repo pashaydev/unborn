@@ -18,22 +18,27 @@ class GhostwriterHandler {
 
         this.messageHash = {};
         this.initialMessagesHash = {};
+        this.activeUsers = new Set();
 
         this.bot.action("ghostwriter", async ctx => {
+            const userId = ctx.from.id;
             const initialMsg = await ctx.reply("Write me text");
             this.subscribeToTextMessage(ctx);
-            this.messageHash[ctx.userId] = 0;
-            this.initialMessagesHash[ctx.userId] = initialMsg.message_id;
+            this.messageHash[userId] = 0;
+            this.initialMessagesHash[userId] = initialMsg.message_id;
+            this.activeUsers.add(userId);
         });
 
         this.bot.command("ghostwriter", async ctx => {
+            const userId = ctx.from.id;
             try {
                 this.bot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
             } catch (error) {
                 console.error(error);
             }
             this.subscribeToTextMessage(ctx);
-            this.messageHash[ctx.userId] = 0;
+            this.messageHash[userId] = 0;
+            this.activeUsers.add(userId);
         });
     }
 
@@ -42,15 +47,30 @@ class GhostwriterHandler {
   */
     subscribeToTextMessage(ctx) {
         this.bot.on("message", async ctx => {
-            if (this.messageHash[ctx.userId] === 1) {
+            const messageUserId = ctx.message.from.id;
+            if (this.messageHash[messageUserId] === 1) {
                 return;
             }
-            await this.handleTextMessage(ctx);
+
+            // Check if the message is from the user who initiated the command
+            if (!this.activeUsers.has(messageUserId)) {
+                return;
+            }
+
+            // Check if the user has already completed their interaction
+            if (this.messageHash[messageUserId] === 1) {
+                return;
+            }
+
             try {
-                ctx.deleteMessage(this.initialMessagesHash[ctx.userId]);
+                await this.handleTextMessage(ctx);
+                await ctx.deleteMessage(this.initialMessagesHash[messageUserId]);
             } catch (error) {
                 console.error(error);
             }
+
+            // Remove user from active users after handling their message
+            this.activeUsers.delete(messageUserId);
         });
     }
 

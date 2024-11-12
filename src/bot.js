@@ -31,13 +31,14 @@ const DOMAIN = process.env.DOMAIN;
 const SECRET_PATH = process.env.SECRET_PATH || crypto.randomBytes(64).toString("hex");
 
 // Function to initialize all bot commands and listeners
-const initializeBotHandlers = () => {
+const initializeBotHandlers = async () => {
     // Register commands
-    bot.telegram.setMyCommands([
+    await bot.telegram.setMyCommands([
         { command: "/help", description: "Get help" },
         { command: "/start", description: "Start the bot" },
         { command: "/menu", description: "Show menu" },
         { command: "/ghostwriter", description: "Generate text" },
+        { command: "/imagegen", description: "Generate image" },
     ]);
 
     bot.command("start", ctx => {
@@ -66,6 +67,7 @@ const initializeBotHandlers = () => {
     ActionFabric.createAction("dockasker");
     ActionFabric.createAction("chess");
     ActionFabric.createAction("ghostwriter");
+    ActionFabric.createAction("imagegen");
 
     // Handle errors
     bot.catch((err, ctx) => {
