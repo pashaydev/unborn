@@ -1,4 +1,4 @@
-import express from "express";
+import Fastify from "fastify";
 import { Telegraf } from "telegraf";
 import dotenv from "dotenv";
 import crypto from "crypto";
@@ -23,8 +23,9 @@ let openai = new OpenAI({
 });
 
 // Create an Express server
-const app = express();
-app.use(express.json());
+const fastify = Fastify({
+    logger: true,
+});
 
 const PORT = process.env.PORT || 3000;
 const DOMAIN = process.env.DOMAIN;
@@ -150,22 +151,27 @@ const setupWebhook = async () => {
 };
 
 // Handle webhook requests
-app.post(`/webhook/${SECRET_PATH}`, (req, res) => {
-    bot.handleUpdate(req.body, res);
+fastify.post(`/webhook/${SECRET_PATH}`, (request, reply) => {
+    bot.handleUpdate(request.body);
+    reply.send("OK");
 });
 
-app.get("/", (req, res) => {
+fastify.get("/", (req, res) => {
     res.send("Telegram Bot Webhook Server is running!");
 });
 
 // Error handler middleware
-app.use((err, req, res, next) => {
-    console.error(err);
-    res.status(500).send("Internal Server Error");
+fastify.setErrorHandler((error, req, res) => {
+    console.error("Error handler:", error);
+    res.send("An error occurred while processing your request.");
 });
 
 // Start the server and initialize the bot
-app.listen(PORT, async () => {
+fastify.listen({ port: PORT }, async (err, address) => {
+    if (err) {
+        fastify.log.error(err);
+    }
+
     console.log(`Server is running on port ${PORT}`);
     await resetBot(); // Initial bot setup
 });
