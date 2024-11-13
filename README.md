@@ -1,6 +1,6 @@
 # Telegram Bot Project
 
-This project is a Node.js-based Telegram bot that utilizes SQLite3 for database management and Telegraph for simplified Telegram API interactions
+This project is a Node.js (Bun runtime) Telegram bot that utilizes SQLite for database management and integrates with various AI services including OpenAI, Anthropic, and Stable Diffusion.
 
 ## Installation
 
@@ -17,6 +17,9 @@ This project is a Node.js-based Telegram bot that utilizes SQLite3 for database 
     npm install
     ```
 
+    You must have bun installed:
+    For more information, refer to the [Bun documentation](https://bun.sh/docs).
+
 3. Set up environment variables:
     ```sh
     export BOT_TOKEN=your-telegram-bot-token
@@ -25,6 +28,7 @@ This project is a Node.js-based Telegram bot that utilizes SQLite3 for database 
     export PORT=your-port-default-3000
     export DOMAIN=your-webhook-url
     export SECRET_PATH=your-secret-path-or-empty
+    export STABLE_DIFFUSION_API_KEY=your-api-key
     ```
 
 ## Usage
