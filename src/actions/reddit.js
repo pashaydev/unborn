@@ -1,6 +1,5 @@
 import { Telegraf } from "telegraf";
 import { saveHistory } from "../db.js";
-import { config } from "dotenv";
 
 export default class RedditHandler {
     /**
@@ -16,10 +15,8 @@ export default class RedditHandler {
         this.anthropic = anthropic;
         this.sendMenu = sendMenu;
 
-        config();
-
         this.maxAttempts = 5;
-        this.redditApiUrl = process.env.REDDIT_API_URL;
+        this.redditApiUrl = Bun.env.REDDIT_API_URL;
         this.responseHash = [];
 
         this.userAgent = "Mozilla/5.0";

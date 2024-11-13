@@ -3,12 +3,9 @@ import { test, describe, it, beforeEach, expect } from "bun:test";
 import { DB_CREATION_QUERY } from "./db.js";
 
 import Anthropic from "@anthropic-ai/sdk";
-import { configDotenv } from "dotenv";
 import OpenAI from "openai";
 import { Telegraf } from "telegraf";
 import ChessGameHandler, { BOARD_CONFIG } from "./actions/chess.js";
-
-configDotenv();
 
 test("insertHistory inserts a record into the history table", async () => {
     const { db, insertHistory } = await import("./db.js");
@@ -40,7 +37,7 @@ test("insertHistory inserts a record into the history table", async () => {
 });
 
 test("Reddit API should return a valid response", async () => {
-    const url = process.env.REDDIT_API_URL + "ProgrammerHumor.json";
+    const url = Bun.env.REDDIT_API_URL + "ProgrammerHumor.json";
 
     let attempts = 0;
     let response;
@@ -55,13 +52,13 @@ test("Reddit API should return a valid response", async () => {
 
 test("Bot should have valid token", async () => {
     // Create bot instance with mocked methods
-    const bot = new Telegraf(process.env.BOT_TOKEN);
+    const bot = new Telegraf(Bun.env.BOT_TOKEN);
     expect(bot.token).toBeTruthy();
 });
 
 test("should process Antropic API response correctly", async () => {
     const anthropic = new Anthropic({
-        apiKey: process.env.ANTHROPIC_API_KEY,
+        apiKey: Bun.env.ANTHROPIC_API_KEY,
     });
 
     const response = await anthropic.messages.create({
@@ -80,7 +77,7 @@ test("should process Antropic API response correctly", async () => {
 });
 
 test("should process OpenAI API correctly", async () => {
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const openai = new OpenAI({ apiKey: Bun.env.OPENAI_API_KEY });
     const completion = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [

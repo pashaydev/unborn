@@ -1,32 +1,29 @@
 import { Telegraf } from "telegraf";
-import dotenv from "dotenv";
 import crypto from "crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import ActionFabric from "./actions/actions-fabric.js";
 import OpenAI from "openai";
 import { Elysia } from "elysia";
 
-dotenv.config();
-
 // Create bot instance
 const createBot = () => {
-    const bot = new Telegraf(process.env.BOT_TOKEN);
+    const bot = new Telegraf(Bun.env.BOT_TOKEN);
     return bot;
 };
 
 let bot = createBot();
 let anthropic = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
+    apiKey: Bun.env.ANTHROPIC_API_KEY,
 });
 let openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+    apiKey: Bun.env.OPENAI_API_KEY,
 });
 
 const elysia = new Elysia();
 
-const PORT = process.env.PORT || 3000;
-const DOMAIN = process.env.DOMAIN;
-const SECRET_PATH = process.env.SECRET_PATH || crypto.randomBytes(64).toString("hex");
+const PORT = Bun.env.PORT || 3000;
+const DOMAIN = Bun.env.DOMAIN;
+const SECRET_PATH = Bun.env.SECRET_PATH || crypto.randomBytes(64).toString("hex");
 
 // Function to initialize all bot commands and listeners
 const initializeBotHandlers = async () => {
@@ -95,7 +92,7 @@ const resetBot = async () => {
             webhook: {
                 domain: webhookUrl,
                 port: PORT || 3000,
-                host: process.env.NODE_ENV === "production" ? "0.0.0.0" : "",
+                host: Bun.env.NODE_ENV === "production" ? "0.0.0.0" : "",
             },
         });
 
@@ -182,7 +179,7 @@ const start = async () => {
             {
                 port: PORT,
 
-                hostname: process.env.NODE_ENV === "production" ? "0.0.0.0" : "",
+                hostname: Bun.env.NODE_ENV === "production" ? "0.0.0.0" : "",
             },
             async () => {
                 await resetBot();

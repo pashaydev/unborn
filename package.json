@@ -14,7 +14,6 @@
     "dependencies": {
         "@anthropic-ai/sdk": "^0.32.1",
         "crypto": "^1.0.1",
-        "dotenv": "^16.4.5",
         "elysia": "^1.1.24",
         "officeparser": "^5.0.0",
         "openai": "^4.71.1",
