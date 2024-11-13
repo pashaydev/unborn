@@ -1,10 +1,10 @@
-import Fastify from "fastify";
 import { Telegraf } from "telegraf";
 import dotenv from "dotenv";
 import crypto from "crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import ActionFabric from "./actions/actions-fabric.js";
 import OpenAI from "openai";
+import { Elysia } from "elysia";
 
 dotenv.config();
 
@@ -22,10 +22,7 @@ let openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Create an Express server
-const fastify = Fastify({
-    logger: true,
-});
+const elysia = new Elysia();
 
 const PORT = process.env.PORT || 3000;
 const DOMAIN = process.env.DOMAIN;
@@ -165,42 +162,29 @@ bot.catch((err, ctx) => {
 });
 
 // Handle webhook requests
-fastify.post(`/webhook/${SECRET_PATH}`, (request, reply) => {
-    bot.handleUpdate(request.body);
-    reply.send("OK");
+elysia.post(`/webhook/${SECRET_PATH}`, ({ body }) => {
+    bot.handleUpdate(body);
+    return { status: "ok" };
 });
 
-fastify.get("/", (req, res) => {
+elysia.get("/", (req, res) => {
     res.send("Telegram Bot Webhook Server is running!");
 });
 
-// Add request validation
-fastify.addHook("preHandler", async (request, reply) => {
-    // You could add validation here
-    if (!request.body) {
-        throw new Error("Missing body");
-    }
-});
-
-// Error handling
-fastify.setErrorHandler((error, request, reply) => {
-    fastify.log.error(error);
-    reply.status(500).send({ error: "Something went wrong" });
+elysia.onError(handler => {
+    console.error(handler.error);
 });
 
 // Start server
 const start = async () => {
     try {
-        fastify.listen(
+        elysia.listen(
             {
-                port: PORT || 3000,
-                host: process.env.NODE_ENV === "production" ? "0.0.0.0" : "",
+                port: PORT,
+
+                hostname: process.env.NODE_ENV === "production" ? "0.0.0.0" : "",
             },
-            async (err, address) => {
-                if (err) {
-                    fastify.log.error(err);
-                }
-                fastify.log.info(`Server listening on ${address}`);
+            async () => {
                 await resetBot();
             }
         );
