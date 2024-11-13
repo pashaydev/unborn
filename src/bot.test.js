@@ -1,6 +1,5 @@
 import assert from "node:assert";
 import { test, describe, it, beforeEach, expect } from "bun:test";
-import { Database } from "bun:sqlite";
 import { DB_CREATION_QUERY } from "./db.js";
 
 import Anthropic from "@anthropic-ai/sdk";
@@ -12,12 +11,7 @@ import ChessGameHandler, { BOARD_CONFIG } from "./actions/chess.js";
 configDotenv();
 
 test("insertHistory inserts a record into the history table", async () => {
-    const { insertHistory } = await import("./db.js");
-
-    const db = new Database(":memory:", {
-        verbose: console.log,
-        readwrite: true,
-    });
+    const { db, insertHistory } = await import("./db.js");
 
     // Create the history table
     db.query(DB_CREATION_QUERY).run();

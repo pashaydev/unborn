@@ -18,12 +18,17 @@ COPY --from=install /temp/dev/node_modules node_modules
 COPY . .
 
 # Set environment variables
-ENV NODE_ENV=production
+ENV NODE_ENV=test
 ENV PORT=3000
 ENV HOST=0.0.0.0
 
 # [optional] tests
 RUN bun test
+
+ENV NODE_ENV=production
+
+# Add this before your CMD or ENTRYPOINT
+RUN mkdir -p /data && chmod 777 /data
 
 # run the app
 USER bun

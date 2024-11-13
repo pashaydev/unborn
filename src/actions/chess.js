@@ -212,13 +212,17 @@ export default class ChessGameHandler {
         gameState.moveHistory.push(move);
         gameState.isPlayerTurn = !gameState.isPlayerTurn;
 
-        saveHistory({
-            userId: gameState.userId,
-            userInput: move,
-            botResponse: `Player color: ${
-                gameState.playerColor
-            }; Move: ${move}; Move history: ${gameState.moveHistory.join(", ")}`,
-        });
+        try {
+            saveHistory({
+                userId: gameState.userId,
+                userInput: move,
+                botResponse: `Player color: ${
+                    gameState.playerColor
+                }; Move: ${move}; Move history: ${gameState.moveHistory.join(", ")}`,
+            });
+        } catch (error) {
+            console.error("Error saving history:", error);
+        }
     }
 
     getMoveGenerator(piece, isWhiteTurn) {
