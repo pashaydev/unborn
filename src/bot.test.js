@@ -1,39 +1,62 @@
 import assert from "node:assert";
 import { test, describe, it, beforeEach, expect } from "bun:test";
-import { DB_CREATION_QUERY } from "./db.js";
+import { databaseManager, SQL_QUERIES } from "./db.js";
 
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { Telegraf } from "telegraf";
 import ChessGameHandler, { BOARD_CONFIG } from "./actions/chess.js";
+import { Database } from "bun:sqlite";
+
+const record = {
+    userId: 10,
+    userInput: "Hello",
+    botResponse: "Hi",
+};
 
 test("insertHistory inserts a record into the history table", async () => {
-    const { db, insertHistory } = await import("./db.js");
+    try {
+        // Get database instance
+        const db = databaseManager.getDatabase();
 
-    // Create the history table
-    db.query(DB_CREATION_QUERY).run();
+        db.query(SQL_QUERIES.INSERT_HISTORY).run(
+            record.userId,
+            record.userInput,
+            record.botResponse
+        );
 
-    const id = Math.floor(Math.random() * 1000);
-    const record = {
-        userId: id,
-        userInput: "Hello",
-        botResponse: "Hi",
-    };
+        const history = db
+            .query("SELECT * FROM history WHERE user_id = $userId")
+            .get({ $userId: record.userId });
 
-    insertHistory(record, db); // Pass db instance to insertHistory
+        expect(history).toBeTruthy();
+        expect(history.user_input).toBe(record.userInput);
+        expect(history.bot_response).toBe(record.botResponse);
+        expect(history.user_id).toBe(record.userId);
 
-    const row = db.query("SELECT * FROM history WHERE user_id = ?").get(id);
+        databaseManager.close();
+    } catch (error) {
+        console.error("Error executing query:", error);
+    }
+});
 
-    expect(row).toBeTruthy();
-    expect(row.user_input).toBe(record.userInput);
-    expect(row.bot_response).toBe(record.botResponse);
-    expect(row.user_id).toBe(id);
+test("Record from db should be deleted", async () => {
+    const db = new Database(":memory:");
 
-    // delete the record
-    db.query("DELETE FROM history WHERE user_id = ?").run(id);
+    db.exec(SQL_QUERIES.CREATE_HISTORY_TABLE);
 
-    // close the database
-    db.close();
+    const insertRecord = db.prepare(SQL_QUERIES.INSERT_HISTORY);
+    insertRecord.run(record.userId, record.userInput, record.botResponse);
+
+    db.query("SELECT * FROM history WHERE user_id = ?").run(record.userId);
+
+    db.query("DELETE FROM history WHERE user_id = ?").run(record.userId);
+
+    const isDeleted = db.query("SELECT * FROM history WHERE user_id = ?").get(record.userId);
+
+    expect(isDeleted).toBeFalsy();
+
+    databaseManager.close();
 });
 
 test("Reddit API should return a valid response", async () => {

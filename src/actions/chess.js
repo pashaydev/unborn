@@ -158,8 +158,8 @@ export default class ChessGameHandler {
         const files = BOARD_CONFIG.FILES;
         const ranks = BOARD_CONFIG.RANKS;
 
-        let ascii = "  +----------------+\n";
-        ascii += `     ${files.split("").join(" ")}\n`;
+        let ascii = "  +---------------------+\n";
+        ascii += `   ${files.split("").join("   ")}\n`;
 
         for (let i = 0; i < 8; i++) {
             const rank = 8 - i;
@@ -186,8 +186,8 @@ export default class ChessGameHandler {
             ascii += rowStr + "\n";
         }
 
-        ascii += "  +----------------+\n";
-        ascii += `     ${files.split("").join(" ")}\n`;
+        ascii += "  +---------------------+\n";
+        ascii += `   ${files.split("").join("   ")}\n`;
 
         return "```\n" + ascii + "```";
     }
@@ -628,33 +628,38 @@ export default class ChessGameHandler {
     }
 
     parseMoveToReadable(move, gameState, color) {
-        const [fromFile, fromRank, toFile, toRank] = move.split("");
-        const fromSquare = this.getSquareFromNotation(fromFile + fromRank, color);
-        const toSquare = this.getSquareFromNotation(toFile + toRank, color);
-        const piece = gameState.board[fromSquare[0]][fromSquare[1]];
+        try {
+            const [fromFile, fromRank, toFile, toRank] = move.split("");
+            const fromSquare = this.getSquareFromNotation(fromFile + fromRank, color);
+            const toSquare = this.getSquareFromNotation(toFile + toRank, color);
+            const piece = gameState.board[fromSquare[0]][fromSquare[1]];
 
-        // Find the piece name by checking both WHITE and BLACK pieces
-        let pieceName = null;
+            // Find the piece name by checking both WHITE and BLACK pieces
+            let pieceName = null;
 
-        // Check WHITE pieces
-        for (const [name, value] of Object.entries(BOARD_CONFIG.PIECES.WHITE)) {
-            if (value === piece) {
-                pieceName = name;
-                break;
-            }
-        }
-
-        // If not found in WHITE pieces, check BLACK pieces
-        if (!pieceName) {
-            for (const [name, value] of Object.entries(BOARD_CONFIG.PIECES.BLACK)) {
+            // Check WHITE pieces
+            for (const [name, value] of Object.entries(BOARD_CONFIG.PIECES.WHITE)) {
                 if (value === piece) {
                     pieceName = name;
                     break;
                 }
             }
-        }
 
-        return `${pieceName} from ${fromFile}${fromRank} to ${toFile}${toRank}`;
+            // If not found in WHITE pieces, check BLACK pieces
+            if (!pieceName) {
+                for (const [name, value] of Object.entries(BOARD_CONFIG.PIECES.BLACK)) {
+                    if (value === piece) {
+                        pieceName = name;
+                        break;
+                    }
+                }
+            }
+
+            return `${pieceName} from ${fromFile}${fromRank} to ${toFile}${toRank}`;
+        } catch (error) {
+            console.error("Error parsing move:", error);
+            return "Invalid move";
+        }
     }
     getMoveKeyboard(gameState, page = 0) {
         const moves = this.getValidMoves(gameState, gameState.playerColor);

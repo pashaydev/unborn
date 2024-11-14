@@ -4,14 +4,10 @@ import Anthropic from "@anthropic-ai/sdk";
 import ActionFabric from "./actions/actions-fabric.js";
 import OpenAI from "openai";
 import { Elysia } from "elysia";
+import Bun from "bun";
 
-// Create bot instance
-const createBot = () => {
-    const bot = new Telegraf(Bun.env.BOT_TOKEN);
-    return bot;
-};
+let bot = new Telegraf(Bun.env.BOT_TOKEN);
 
-let bot = createBot();
 let anthropic = new Anthropic({
     apiKey: Bun.env.ANTHROPIC_API_KEY,
 });
@@ -22,6 +18,7 @@ let openai = new OpenAI({
 const elysia = new Elysia();
 
 const PORT = Bun.env.PORT || 3000;
+console.log("PORT:", PORT);
 const DOMAIN = Bun.env.DOMAIN;
 const SECRET_PATH = Bun.env.SECRET_PATH || crypto.randomBytes(64).toString("hex");
 
@@ -32,12 +29,16 @@ const initializeBotHandlers = async () => {
         { command: "/help", description: "Get help" },
         { command: "/start", description: "Start the bot" },
         { command: "/menu", description: "Show menu" },
-        { command: "/ghostwriter", description: "Generate text" },
+        { command: "/ghostwriter", description: "Make polite message" },
+        { command: "/ghostwriteraudio", description: "Make polite message from audio to audio" },
+        {
+            command: "/ghostwriterfromtexttoaudio",
+            description: "Make polite message from text to audio",
+        },
         { command: "/imagegen", description: "Generate image" },
     ]);
 
     bot.command("start", async ctx => {
-        await ctx.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
         sendMenu(ctx, "Choose options bellow.");
     });
 
@@ -47,7 +48,7 @@ const initializeBotHandlers = async () => {
 
     bot.command("help", async ctx => {
         await ctx.reply(
-            "This bot is a collection of various actions. You can choose an action from the menu below."
+            "This bot is a collection of various actions. You can choose an action from the menu below. Or you can use [ / ] to see the list of available commands."
         );
         sendMenu(ctx);
     });
@@ -63,6 +64,8 @@ const initializeBotHandlers = async () => {
     ActionFabric.createAction("chess");
     ActionFabric.createAction("ghostwriter");
     ActionFabric.createAction("imagegen");
+
+    console.log("Bot handlers have been initialized successfully!");
 
     // Handle errors
     bot.catch((err, ctx) => {
@@ -80,21 +83,13 @@ const resetBot = async () => {
         }
 
         // Create a new bot instance
-        bot = createBot();
+        bot = new Telegraf(Bun.env.BOT_TOKEN);
 
         // Initialize all handlers
         initializeBotHandlers();
 
         // Setup webhook for the new instance
-        const webhookUrl = await setupWebhook();
-
-        bot.start({
-            webhook: {
-                domain: webhookUrl,
-                port: PORT || 3000,
-                host: Bun.env.NODE_ENV === "production" ? "0.0.0.0" : "",
-            },
-        });
+        await setupWebhook();
 
         console.log("Bot has been reset and reinitialized successfully!");
     } catch (error) {
@@ -103,8 +98,8 @@ const resetBot = async () => {
 };
 
 // Modified sendMenu function
-const sendMenu = (ctx, text = "Choose options bellow.") => {
-    ctx.reply(text, {
+const sendMenu = async (ctx, text = "Choose options bellow.") => {
+    await ctx.reply(text, {
         reply_markup: {
             inline_keyboard: [
                 [
@@ -175,18 +170,19 @@ elysia.onError(handler => {
 // Start server
 const start = async () => {
     try {
+        console.log("ENV:", Bun.env.NODE_ENV);
         elysia.listen(
             {
                 port: PORT,
-
                 hostname: Bun.env.NODE_ENV === "production" ? "0.0.0.0" : "",
             },
             async () => {
+                console.log("Server is running!");
                 await resetBot();
             }
         );
     } catch (err) {
-        fastify.log.error(err);
+        console.error(err);
         process.exit(1);
     }
 };

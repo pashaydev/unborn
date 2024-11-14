@@ -20,9 +20,7 @@ export default class ImagegenHandler {
             // remove the command message
             try {
                 await this.bot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
-            } catch (error) {
-                console.error(error);
-            }
+            } catch {}
 
             this.handleInitAction(ctx);
         });
@@ -58,15 +56,8 @@ export default class ImagegenHandler {
             }
 
             try {
-                ctx.deleteMessage(msg.message_id);
-            } catch (error) {
-                console.error("Error:", error);
-            }
-            try {
                 ctx.deleteMessage(ctx.message.message_id);
-            } catch (error) {
-                console.error("Error:", error);
-            }
+            } catch {}
 
             const msg2 = await ctx.reply("Generating image...");
 
@@ -78,9 +69,7 @@ export default class ImagegenHandler {
 
             try {
                 await ctx.deleteMessage(msg2.message_id);
-            } catch (error) {
-                console.error("Error:", error);
-            }
+            } catch {}
 
             this.activeUsers.delete(userId);
         });
