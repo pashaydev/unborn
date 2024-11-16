@@ -7,6 +7,7 @@ import OpenAI from "openai";
 import { Telegraf } from "telegraf";
 import ChessGameHandler, { BOARD_CONFIG } from "./actions/chess.js";
 import { Database } from "bun:sqlite";
+import puppeteer from "puppeteer";
 
 const record = {
     userId: 10,
@@ -14,7 +15,7 @@ const record = {
     botResponse: "Hi",
 };
 
-test("insertHistory inserts a record into the history table", async () => {
+test("DB Insert record into the history table", async () => {
     try {
         // Get database instance
         const db = databaseManager.getDatabase();
@@ -79,7 +80,7 @@ test("Bot should have valid token", async () => {
     expect(bot.token).toBeTruthy();
 });
 
-test("should process Antropic API response correctly", async () => {
+test("Antropic API response correctly", async () => {
     const anthropic = new Anthropic({
         apiKey: Bun.env.ANTHROPIC_API_KEY,
     });
@@ -99,7 +100,7 @@ test("should process Antropic API response correctly", async () => {
     expect(response.content[0].text, "Response data should exist").toBeString();
 });
 
-test("should process OpenAI API correctly", async () => {
+test("OpenAI API response correctly", async () => {
     const openai = new OpenAI({ apiKey: Bun.env.OPENAI_API_KEY });
     const completion = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -114,6 +115,111 @@ test("should process OpenAI API correctly", async () => {
     let aiRes = completion.choices[0].message.content;
     expect(aiRes, "Response should exist").toBeString();
 });
+
+describe("Scrapper", async () => {
+    const browserConfig = {
+        headless: "new",
+        args: [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+            "--window-size=1920,1080",
+            "--disable-web-security", // Disable CORS for iframe issues
+            "--disable-features=IsolateOrigins,site-per-process", // Handle frame isolation
+        ],
+        defaultViewport: {
+            width: 1920,
+            height: 1080,
+        },
+        ignoreHTTPSErrors: true, // Handle potential SSL issues
+    };
+
+    let browser = await puppeteer.launch(browserConfig);
+    try {
+        test(
+            "should return search results",
+            async () => {
+                // Launch with specific arguments to avoid detection
+                const browser = await puppeteer.launch({
+                    headless: "new",
+                    args: [
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-accelerated-2d-canvas",
+                        "--disable-gpu",
+                        "--window-size=1920x1080",
+                    ],
+                    defaultViewport: {
+                        width: 1920,
+                        height: 1080,
+                    },
+                });
+
+                try {
+                    const page = await browser.newPage();
+
+                    // Set a realistic user agent
+                    await page.setUserAgent(
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    );
+
+                    // Consider using a different search engine that's more automation-friendly
+                    await page.goto("https://www.duckduckgo.com", {
+                        waitUntil: "networkidle0",
+                        timeout: 30000,
+                    });
+
+                    // Add error handling for navigation
+                    await page.type("#searchbox_input", "puppeteer");
+                    await Promise.all([
+                        page.keyboard.press("Enter"),
+                        page.waitForNavigation({ waitUntil: "networkidle0" }),
+                    ]);
+
+                    // Wait for results with timeout and error handling
+                    const resultsSelector = "[data-testid='result']";
+                    await page.waitForSelector(resultsSelector, { timeout: 5000 }).catch(e => {
+                        throw new Error(`Results not found: ${e.message}`);
+                    });
+
+                    const searchResults = await page.evaluate(() => {
+                        // find elements with data-testid attribute
+                        const results = Array.from(
+                            document.querySelectorAll("[data-testid='result']")
+                        );
+
+                        return results.map(result => {
+                            const title = result.querySelector("h2")?.textContent?.trim();
+                            const link = result.querySelector("a")?.href;
+                            const snippet = result
+                                .querySelector("[data-result='snippet']")
+                                ?.textContent?.trim();
+                            return { title, link, snippet };
+                        });
+                    });
+
+                    expect(searchResults.length).toBeGreaterThan(0);
+                    expect(searchResults[0].title).toBeString();
+                    expect(searchResults[0].link).toBeString();
+                    expect(searchResults[0].snippet).toBeString();
+                } catch (error) {
+                    console.error("Failed to scrape DuckDuckGo, error:", error);
+                } finally {
+                    await browser.close();
+                }
+            },
+            {
+                timeout: 30000, // Increased timeout
+            }
+        );
+    } catch (error) {
+        console.error("Failed to scrape Google:", error);
+        browser.close();
+    }
+});
+
 test("Chess game", async () => {
     let handler;
 
@@ -121,7 +227,6 @@ test("Chess game", async () => {
     const mockBot = {
         action: () => {},
     };
-
     const mockAnthropic = {
         messages: {
             create: async () => ({
@@ -134,7 +239,13 @@ test("Chess game", async () => {
 
     // Setup
     beforeEach(() => {
-        handler = new ChessGameHandler(mockBot, mockAnthropic, mockSendMenu);
+        const args = {
+            anthropic: mockAnthropic,
+            openai: {},
+            bot: mockBot,
+            sendMenu: mockSendMenu,
+        };
+        handler = new ChessGameHandler(args);
     });
 
     describe("Board Initialization", async t => {
@@ -179,6 +290,19 @@ test("Chess game", async () => {
             gameState.board[6][0] = BOARD_CONFIG.SQUARES.LIGHT;
             const rookMoves = handler.getRookMoves(gameState, 0, 7, true);
             assert(rookMoves.length > 0);
+        });
+
+        it("should validate knight moves correctly", () => {
+            const gameState = {
+                board: handler.initializeBoard(),
+                playerColor: "white",
+                aiColor: "black",
+                isPlayerTurn: true,
+                moveHistory: [],
+            };
+
+            const knightMoves = handler.getKnightMoves(gameState, 1, 7, true);
+            assert(knightMoves.length > 0);
         });
     });
 

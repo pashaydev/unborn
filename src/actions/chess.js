@@ -39,19 +39,21 @@ export default class ChessGameHandler {
      * @param {Anthropic} anthropic
      * @param {Function} sendMenu
      */
-    constructor(bot, anthropic, sendMenu) {
-        this.bot = bot;
-        this.anthropic = anthropic;
-        this.sendMenu = sendMenu;
+    constructor(args) {
+        this.bot = args.bot;
+        this.anthropic = args.anthropic;
+        this.sendMenu = args.sendMenu;
         this.games = new Map();
-        this.setupBotActions();
     }
 
-    setupBotActions() {
-        this.bot.action("chess", ctx => this.startNewGame(ctx));
+    initAction(ctx, actionName) {
+        this.startNewGame(ctx);
+    }
+    initCommand(ctx, actionName) {
+        this.startNewGame(ctx);
     }
 
-    async handleTextCommand(ctx) {
+    async handleTextMessage(ctx) {
         const gameState = this.games.get(ctx.chat.id);
 
         const isPlayerTurn = gameState.isPlayerTurn;
@@ -502,7 +504,14 @@ export default class ChessGameHandler {
             [-1, 2],
             [-1, -2],
         ];
-        const turnColor = isWhiteTurn ? "white" : "black";
+        const turnColor = gameState.isPlayerTurn ? gameState.playerColor : gameState.aiColor;
+
+        const isPieceBelongsToSide = piece => {
+            if (isWhiteTurn) {
+                return this.isWhitePiece(piece);
+            }
+            return this.isBlackPiece(piece);
+        };
 
         for (const [dx, dy] of knightMoves) {
             const newFile = file + dx;
@@ -510,11 +519,9 @@ export default class ChessGameHandler {
 
             if (newFile >= 0 && newFile < 8 && newRank >= 0 && newRank < 8) {
                 const targetPiece = gameState.board[newRank][newFile];
-                if (
-                    !targetPiece ||
-                    (isWhiteTurn && this.isBlackPiece(targetPiece)) ||
-                    (!isWhiteTurn && this.isWhitePiece(targetPiece))
-                ) {
+
+                // Can move to empty squares or capture opponent's pieces
+                if (this.isEmptySquare(targetPiece) || !isPieceBelongsToSide(targetPiece)) {
                     moves.push(
                         this.getNotationFromSquare(rank, file, turnColor) +
                             this.getNotationFromSquare(newRank, newFile, turnColor)
@@ -624,7 +631,7 @@ export default class ChessGameHandler {
         this.bot.action("resign", ctx => this.handleResign(ctx));
         this.bot.action(/page_(\d+)/, ctx => this.handlePageChange(ctx));
         // setup action for text command
-        this.bot.on(message("text"), ctx => this.handleTextCommand(ctx));
+        // this.bot.on(message("text"), ctx => this.handleTextCommand(ctx));
     }
 
     parseMoveToReadable(move, gameState, color) {

@@ -12,6 +12,15 @@ export class DatabaseManager {
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             );
         `,
+        CREATE_USER_TABLE: `
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                username TEXT,
+                access_level INTEGER DEFAULT 0,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            `,
         INSERT_HISTORY: "INSERT INTO history (user_id, user_input, bot_response) VALUES (?, ?, ?)",
     };
 
@@ -44,6 +53,15 @@ export class DatabaseManager {
         }
     }
 
+    addRootUser() {
+        const db = this.getDatabase();
+        db.query("INSERT INTO users (user_id, username, access_level) VALUES (?, ?, ?)").run(
+            634587551,
+            "root",
+            1
+        );
+    }
+
     initialize() {
         try {
             this.ensureDirectoryExists();
@@ -56,13 +74,28 @@ export class DatabaseManager {
                 create: true,
             });
 
-            try {
-                this.db.exec(DatabaseManager.SQL_QUERIES.CREATE_HISTORY_TABLE, err => {
-                    if (err) {
-                        console.error("Failed to create table:", err);
-                    }
-                });
-            } catch {}
+            // Check if history table exists
+            const tableExists = this.db
+                .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='history'")
+                .get();
+
+            if (!tableExists) {
+                // Create the table
+                this.db.exec(SQL_QUERIES.CREATE_HISTORY_TABLE);
+            }
+
+            // Check if users table exists
+            const usersTableExists = this.db
+                .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+                .get();
+
+            if (!usersTableExists) {
+                // Create the table
+                this.db.exec(SQL_QUERIES.CREATE_USER_TABLE);
+            }
+
+            // Add root user
+            this.addRootUser();
 
             console.log(`Database initialized successfully at ${this.dbPath}`);
             return this.db;
@@ -101,6 +134,12 @@ export const insertHistory = ({ userInput, botResponse, userId }) => {
     db.query(SQL_QUERIES.INSERT_HISTORY).run(userId, userInput || "", botResponse || "");
 
     console.log("Add new items to db", userInput, botResponse, userId);
+};
+
+export const addNewUser = ({ userId, username }) => {
+    const db = databaseManager.getDatabase();
+    db.query("INSERT INTO users (user_id, username) VALUES (?, ?)").run(userId, username);
+    console.log("Add new user to db", userId, username);
 };
 
 export const getHistory = ({ userId }) => {

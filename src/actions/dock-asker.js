@@ -12,26 +12,31 @@ export default class DockAsker {
      * @constructor DockAsker
      * @returns {DockAsker}
      */
-    constructor(bot, anthropic, sendMenu) {
-        this.bot = bot;
-        this.anthropic = anthropic;
-        this.sendMenu = sendMenu;
+    constructor(args) {
+        this.bot = args.bot;
+        this.anthropic = args.anthropic;
+        this.sendMenu = args.sendMenu;
         this.messageHash = {};
-        this.setupActions();
     }
 
-    setupActions() {
-        this.bot.action("dockasker", ctx => {
+    initAction(ctx, action) {
+        if (action === "dockasker") {
             ctx.reply("Send me a file. (.docx, .txt, .xlsx, .pdf)");
-            this.setupMessageHandlers();
-        });
+            // this.setupMessageHandlers();
+        }
+    }
+    initCommand(ctx, action) {
+        if (action === "dockasker") {
+            ctx.reply("Send me a file. (.docx, .txt, .xlsx, .pdf)");
+            // this.setupMessageHandlers();
+        }
     }
 
-    setupMessageHandlers() {
-        // Using one-time handlers to prevent multiple registrations
-        this.bot.on(message("document"), ctx => this.handleDocumentMessage(ctx), { once: true });
-        this.bot.on(message("text"), ctx => this.handleTextMessage(ctx), { once: true });
-    }
+    // setupMessageHandlers() {
+    //     // Using one-time handlers to prevent multiple registrations
+    //     this.bot.on(message("document"), ctx => this.handleDocumentMessage(ctx), { once: true });
+    //     this.bot.on(message("text"), ctx => this.handleTextMessage(ctx), { once: true });
+    // }
 
     async handleDocumentMessage(ctx) {
         const fileType = ctx.message.document.mime_type;
@@ -63,7 +68,7 @@ export default class DockAsker {
 
         if (ctx.message.caption) {
             const userText = ctx.message.caption;
-            await this.handleFinishLazyWtf({ userText, ctx });
+            await this.finishProcessing({ userText, ctx });
         } else {
             ctx.reply("File received. Now, please send me some text.");
         }
@@ -71,10 +76,10 @@ export default class DockAsker {
 
     async handleTextMessage(ctx) {
         const userText = ctx.message.text;
-        await this.handleFinishLazyWtf({ userText, ctx });
+        await this.finishProcessing({ userText, ctx });
     }
 
-    async handleFinishLazyWtf({ userText, ctx }) {
+    async finishProcessing({ userText, ctx }) {
         const fileData = this.messageHash[ctx.from.id];
 
         if (!fileData) {
@@ -180,23 +185,38 @@ export default class DockAsker {
 
             const handle = {
                 "text/plain": async fileBlob => {
-                    const fileBuffer = await fileBlob.arrayBuffer();
-                    const fileContent = new TextDecoder().decode(fileBuffer);
-                    return fileContent;
+                    try {
+                        const fileBuffer = await fileBlob.arrayBuffer();
+                        const fileContent = new TextDecoder().decode(fileBuffer);
+                        return fileContent;
+                    } catch (error) {
+                        console.error("Error handling text file:", error);
+                        return null;
+                    }
                 },
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
                     async fileBlob => {
-                        const buffer = await fileBlob.arrayBuffer();
-                        const fileBuffer = Buffer.from(buffer);
-                        const data = await parseOfficeAsync(fileBuffer);
-                        return data.toString();
+                        try {
+                            const buffer = await fileBlob.arrayBuffer();
+                            const fileBuffer = Buffer.from(buffer);
+                            const data = await parseOfficeAsync(fileBuffer);
+                            return data.toString();
+                        } catch (error) {
+                            console.error("Error handling Word:", error);
+                            return null;
+                        }
                     },
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
                     async fileBlob => {
-                        const buffer = await fileBlob.arrayBuffer();
-                        const fileBuffer = Buffer.from(buffer);
-                        const data = await parseOfficeAsync(fileBuffer);
-                        return data.toString();
+                        try {
+                            const buffer = await fileBlob.arrayBuffer();
+                            const fileBuffer = Buffer.from(buffer);
+                            const data = await parseOfficeAsync(fileBuffer);
+                            return data.toString();
+                        } catch (error) {
+                            console.error("Error handling Excel:", error);
+                            return null;
+                        }
                     },
                 "application/pdf": async () => {
                     try {

@@ -33,59 +33,79 @@ class GhostwriterHandler {
      * @constructor GhostwriterHandler
      * @returns {GhostwriterHandler}
      */
-    constructor(bot, anthropic, sendMenu, openai) {
-        this.bot = bot;
-        this.anthropic = anthropic;
-        this.openai = openai;
-        this.sendMenu = sendMenu;
+    constructor(args) {
+        this.bot = args.bot;
+        this.anthropic = args.anthropic;
+        this.openai = args.openai;
+        this.sendMenu = args.sendMenu;
 
         this.messageHash = {};
         this.initialMessagesHash = {};
-        this.activeUsers = new Set();
+        this.activeUsers = new Map();
         this.maxFileSize = 15 * 1024 * 1024; // 15 MB
         this.maxTextLength = 150_000;
+    }
 
-        this.bot.action("ghostwriter", async ctx => {
+    async initAction(ctx, name) {
+        if (name === "ghostwriter") {
             const userId = ctx.from.id;
             const initialMsg = await ctx.reply("Write me text");
-            this.subscribeToTextMessage(ctx);
             this.messageHash[userId] = 0;
             this.initialMessagesHash[userId] = initialMsg.message_id;
-            this.activeUsers.add(userId);
-        });
 
-        this.bot.command("ghostwriter", async ctx => {
+            this.activeUsers.set(userId, "ghostwriter");
+        }
+
+        if (name === "ghostwriterfromtexttoaudio") {
             const userId = ctx.from.id;
             try {
                 this.bot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
             } catch {}
 
-            this.subscribeToTextMessage(ctx);
             this.messageHash[userId] = 0;
-            this.activeUsers.add(userId);
-        });
+            this.activeUsers.set(userId, "ghostwriterfromtexttoaudio");
+        }
 
-        this.bot.command("ghostwriterfromtexttoaudio", async ctx => {
+        if (name === "ghostwriteraudio") {
             const userId = ctx.from.id;
             try {
                 this.bot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
             } catch {}
 
-            this.subscribeToTextMessage(ctx, true);
             this.messageHash[userId] = 0;
-            this.activeUsers.add(userId);
-        });
+            this.activeUsers.set(userId, "ghostwriteraudio");
+        }
+    }
 
-        this.bot.command("ghostwriteraudio", async ctx => {
+    initCommand(ctx, name) {
+        console.log("Init command:", name);
+        if (name === "ghostwriter") {
             const userId = ctx.from.id;
             try {
                 this.bot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
             } catch {}
 
-            this.subscribeToAudioMessage(ctx);
             this.messageHash[userId] = 0;
-            this.activeUsers.add(userId);
-        });
+            this.activeUsers.set(userId, "ghostwriter");
+        }
+        if (name === "ghostwriterfromtexttoaudio") {
+            const userId = ctx.from.id;
+            try {
+                this.bot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+            } catch {}
+
+            this.messageHash[userId] = 0;
+            this.activeUsers.set(userId, "ghostwriterfromtexttoaudio");
+        }
+        if (name === "ghostwriteraudio") {
+            const userId = ctx.from.id;
+            try {
+                this.bot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+            } catch {}
+
+            this.messageHash[userId] = 0;
+            this.activeUsers.set(userId, "ghostwriteraudio");
+        }
     }
 
     async downloadVoiceMessage(ctx) {
@@ -131,40 +151,44 @@ class GhostwriterHandler {
         }
     }
 
-    subscribeToAudioMessage(ctx) {
-        this.bot.on(message("voice"), async ctx => {
-            const messageUserId = ctx.message.from.id;
-            if (this.messageHash[messageUserId] === 1) {
-                return;
-            }
+    /**
+     * @param {import('telegraf').Context} ctx - Telegraf context
+     * @returns {Promise<void>}
+     */
+    async handleVoiceMessage(ctx) {
+        const messageUserId = ctx.message.from.id;
+        if (this.messageHash[messageUserId] === 1) {
+            return;
+        }
 
-            // Check if the message is from the user who initiated the command
-            if (!this.activeUsers.has(messageUserId)) {
-                return;
-            }
+        // Check if the message is from the user who initiated the command
+        const activeuser = this.activeUsers.get(messageUserId);
+        if (!activeuser || activeuser !== "ghostwriteraudio") {
+            return;
+        }
 
-            // Check if the user has already completed their interaction
-            if (this.messageHash[messageUserId] === 1) {
-                return;
-            }
+        // Check if the user has already completed their interaction
+        if (this.messageHash[messageUserId] === 1) {
+            return;
+        }
 
-            try {
-                await ctx.deleteMessage(this.initialMessagesHash[messageUserId]);
-            } catch {}
+        try {
+            await ctx.deleteMessage(this.initialMessagesHash[messageUserId]);
+        } catch {}
 
-            try {
-                await this.handleAudioMessage(ctx);
-            } catch (error) {
-                console.error(error);
-            }
+        try {
+            await this.rephraseFromAudio(ctx);
+        } catch (error) {
+            console.error(error);
+        }
 
-            // Remove user from active users after handling their message
-            this.activeUsers.delete(messageUserId);
-        });
+        // Remove user from active users after handling their message
+        this.activeUsers.delete(messageUserId);
     }
 
     async textToSpeech(ctx, text) {
         try {
+            console.log("Generating speech from text:", text);
             const response = await this.openai.audio.speech.create({
                 model: "tts-1-hd",
                 voice: "alloy",
@@ -206,11 +230,9 @@ class GhostwriterHandler {
         }
     }
 
-    async handleAudioMessage(ctx, fromText = false) {
+    async rephraseFromAudio(ctx) {
         let userText = "";
 
-        if (!fromText) {
-        }
         try {
             const audioFile = await this.downloadVoiceMessage(ctx);
 
@@ -242,7 +264,7 @@ class GhostwriterHandler {
 
             userText = transcription;
         } catch (err) {
-            console.error(err);
+            console.error("Error in audio transcription:", err);
             saveHistory({
                 userId: ctx.from.id,
                 userInput: "Transcription error",
@@ -300,36 +322,61 @@ class GhostwriterHandler {
     /**
     @param {import('telegraf').Context} ctx - Telegraf context
   */
-    subscribeToTextMessage(ctx, withAudio = false) {
-        this.bot.on(message("text"), async ctx => {
-            const messageUserId = ctx.message.from.id;
+    async handleTextMessage(ctx) {
+        const messageUserId = ctx.message.from.id;
 
-            // Check if the message is from the user who initiated the command
-            if (!this.activeUsers.has(messageUserId)) {
-                return;
-            }
+        const activeuser = this.activeUsers.get(messageUserId);
+        console.log("Active user:", activeuser);
+        // Check if the message is from the user who initiated the command
+        if (!activeuser) {
+            return;
+        }
 
-            // Check if the user has already completed their interaction
-            if (this.messageHash[messageUserId] === 1) {
-                return;
-            }
+        if (activeuser === "ghostwriterfromtexttoaudio") {
+            return this.handleTextWithAudio(ctx);
+        }
+        if (activeuser !== "ghostwriter") {
+            return;
+        }
 
-            try {
-                await ctx.deleteMessage(this.initialMessagesHash[messageUserId]);
-            } catch {}
+        // Check if the user has already completed their interaction
+        if (this.messageHash[messageUserId] === 1) {
+            return;
+        }
 
-            try {
-                let message = await this.handleTextMessage(ctx);
-                if (withAudio) {
-                    await this.textToSpeech(ctx, message);
-                }
-            } catch (error) {
-                console.error(error);
-            }
+        try {
+            await ctx.deleteMessage(this.initialMessagesHash[messageUserId]);
+        } catch {}
 
-            // Remove user from active users after handling their message
-            this.activeUsers.delete(messageUserId);
-        });
+        try {
+            let message = await this.rephraseTextMessage(ctx);
+            console.log("Message:", message);
+            await ctx.reply(message);
+        } catch (error) {
+            console.error(error);
+        }
+
+        // Remove user from active users after handling their message
+        this.activeUsers.delete(messageUserId);
+    }
+
+    async handleTextWithAudio(ctx) {
+        const messageUserId = ctx.message.from.id;
+
+        try {
+            await ctx.deleteMessage(this.initialMessagesHash[messageUserId]);
+        } catch {}
+
+        try {
+            let message = await this.rephraseTextMessage(ctx);
+            console.log("Message:", message);
+            await this.textToSpeech(ctx, message);
+        } catch (error) {
+            console.error(error);
+        }
+
+        // Remove user from active users after handling their message
+        this.activeUsers.delete(messageUserId);
     }
 
     /**
@@ -337,7 +384,7 @@ class GhostwriterHandler {
      * @returns {Promise<string>}
      * @description Handles the text message
      */
-    async handleTextMessage(ctx) {
+    async rephraseTextMessage(ctx) {
         try {
             await ctx.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
         } catch {}
@@ -374,6 +421,8 @@ class GhostwriterHandler {
             });
 
             aiRes = completion.choices[0].message.content;
+
+            console.log("AI response:", aiRes);
         } catch (err) {
             console.error(err);
             saveHistory({

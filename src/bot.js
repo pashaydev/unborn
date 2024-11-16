@@ -1,10 +1,11 @@
 import { Telegraf } from "telegraf";
 import crypto from "crypto";
 import Anthropic from "@anthropic-ai/sdk";
-import ActionFabric from "./actions/actions-fabric.js";
+import ActionManager from "./actions/actions-manager.js";
 import OpenAI from "openai";
 import { Elysia } from "elysia";
 import Bun from "bun";
+import UserManager from "./user-manager.js";
 
 let bot = new Telegraf(Bun.env.BOT_TOKEN);
 
@@ -29,6 +30,7 @@ const initializeBotHandlers = async () => {
         { command: "/help", description: "Get help" },
         { command: "/start", description: "Start the bot" },
         { command: "/menu", description: "Show menu" },
+        { command: "/reddit", description: "Reddit interactions" },
         { command: "/ghostwriter", description: "Make polite message" },
         { command: "/ghostwriteraudio", description: "Make polite message from audio to audio" },
         {
@@ -36,6 +38,7 @@ const initializeBotHandlers = async () => {
             description: "Make polite message from text to audio",
         },
         { command: "/imagegen", description: "Generate image" },
+        { command: "/scrapper", description: "Web scrapping" },
     ]);
 
     bot.command("start", async ctx => {
@@ -53,17 +56,15 @@ const initializeBotHandlers = async () => {
         sendMenu(ctx);
     });
 
-    // Recreate actions
-    ActionFabric.bot = bot;
-    ActionFabric.anthropic = anthropic;
-    ActionFabric.sendMenu = sendMenu;
-    ActionFabric.openai = openai;
+    const userManager = new UserManager();
 
-    ActionFabric.createAction("reddit");
-    ActionFabric.createAction("dockasker");
-    ActionFabric.createAction("chess");
-    ActionFabric.createAction("ghostwriter");
-    ActionFabric.createAction("imagegen");
+    const actionManager = new ActionManager({
+        bot,
+        sendMenu,
+        openai,
+        anthropic,
+        userManager,
+    });
 
     console.log("Bot handlers have been initialized successfully!");
 

@@ -1,4 +1,3 @@
-import { message } from "telegraf/filters";
 import { saveHistory } from "../db.js";
 
 export default class ImagegenHandler {
@@ -7,23 +6,45 @@ export default class ImagegenHandler {
      * @param {import('telegraf').Telegraf} bot
      * @param {function} sendMenu
      */
-    constructor(bot, sendMenu) {
-        this.bot = bot;
-        this.sendMenu = sendMenu;
+    constructor(args) {
+        this.bot = args.bot;
+        this.sendMenu = args.sendMenu;
         this.activeUsers = new Set();
         this.userInteractions = {};
+    }
 
-        this.bot.action("imagegen", ctx => {
-            this.handleInitAction(ctx);
-        });
-        this.bot.command("imagegen", async ctx => {
-            // remove the command message
-            try {
-                await this.bot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
-            } catch {}
+    initAction(ctx, action) {
+        this.handleInitAction(ctx);
+    }
+    initCommand(ctx, action) {
+        this.handleInitAction(ctx);
+    }
 
-            this.handleInitAction(ctx);
-        });
+    async handleTextMessage(ctx) {
+        const text = ctx.message.text;
+        const userId = ctx.from.id;
+
+        if (!this.activeUsers.has(userId)) {
+            return;
+        }
+
+        try {
+            ctx.deleteMessage(ctx.message.message_id);
+        } catch {}
+
+        const msg2 = await ctx.reply("Generating image...");
+
+        try {
+            await this.handleGenerateImage(ctx, text);
+        } catch (error) {
+            console.error("Error:", error);
+        }
+
+        try {
+            await ctx.deleteMessage(msg2.message_id);
+        } catch {}
+
+        this.activeUsers.delete(userId);
     }
 
     /**
@@ -44,35 +65,8 @@ export default class ImagegenHandler {
             return;
         }
 
-        const msg = await ctx.reply("Enter text to generate an image");
+        await ctx.reply("Enter text to generate an image");
         this.activeUsers.add(userId);
-
-        this.bot.on(message("text"), async ctx => {
-            const text = ctx.message.text;
-            const userId = ctx.from.id;
-
-            if (!this.activeUsers.has(userId)) {
-                return;
-            }
-
-            try {
-                ctx.deleteMessage(ctx.message.message_id);
-            } catch {}
-
-            const msg2 = await ctx.reply("Generating image...");
-
-            try {
-                await this.handleGenerateImage(ctx, text);
-            } catch (error) {
-                console.error("Error:", error);
-            }
-
-            try {
-                await ctx.deleteMessage(msg2.message_id);
-            } catch {}
-
-            this.activeUsers.delete(userId);
-        });
     }
 
     /**
@@ -105,7 +99,11 @@ export default class ImagegenHandler {
                 console.error("API Error:", error);
                 saveHistory({
                     userId: ctx.userId,
-                    botResponse: "Failed to generate image: " + error.message,
+                    botResponse:
+                        "Failed to generate image: " +
+                        error.message +
+                        " user: " +
+                        ctx.from.username,
                     userInput: text,
                 });
                 await ctx.reply("Failed to generate image");
@@ -125,7 +123,10 @@ export default class ImagegenHandler {
 
             saveHistory({
                 userId: ctx.userId,
-                botResponse: "Stable diffusion: Image generated successfully",
+                botResponse:
+                    "User: " +
+                    ctx.from.username +
+                    " Stable diffusion: Image generated successfully",
                 userInput: text,
             });
         } catch (error) {

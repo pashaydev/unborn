@@ -18,6 +18,7 @@
         "officeparser": "^5.0.0",
         "openai": "^4.71.1",
         "pdfjs-dist": "^4.8.69",
+        "puppeteer": "^23.8.0",
         "sqlite3": "^5.1.7",
         "telegraf": "^4.16.3"
     },

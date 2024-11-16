@@ -10,10 +10,10 @@ export default class RedditHandler {
      * @param {string} contentType
      * @param {number} maxAttempts
      */
-    constructor(bot, anthropic, sendMenu) {
-        this.bot = bot;
-        this.anthropic = anthropic;
-        this.sendMenu = sendMenu;
+    constructor(args) {
+        this.bot = args.bot;
+        this.anthropic = args.anthropic;
+        this.sendMenu = args.sendMenu;
 
         this.maxAttempts = 5;
         this.redditApiUrl = Bun.env.REDDIT_API_URL;
@@ -24,25 +24,25 @@ export default class RedditHandler {
 
         this.params = "?limit=1000&sort=new";
 
-        this.bot.action("reddit", ctx => {
-            this.handleInitAction(ctx);
+        this.bot.action("reddit:cute", ctx => {
+            this.handleInnerAction(ctx, "cute.json");
         });
-        this.bot.command("reddit", ctx => {
-            this.handleInitAction(ctx);
+        this.bot.action("reddit:tech-memes", ctx => {
+            this.handleInnerAction(ctx, "ProgrammingHumor.json");
         });
+        this.bot.action("reddit:art", ctx => {
+            this.handleInnerAction(ctx, "art.json");
+        });
+        this.bot.action("reddit:memes", ctx => {
+            this.handleInnerAction(ctx, "memes.json");
+        });
+    }
 
-        this.bot.action("cute", ctx => {
-            this.handleMemAction(ctx, "cute.json");
-        });
-        this.bot.action("tech-memes", ctx => {
-            this.handleMemAction(ctx, "ProgrammingHumor.json");
-        });
-        this.bot.action("art", ctx => {
-            this.handleMemAction(ctx, "art.json");
-        });
-        this.bot.action("memes", ctx => {
-            this.handleMemAction(ctx, "memes.json");
-        });
+    initAction(ctx, action) {
+        this.handleInitAction(ctx);
+    }
+    initCommand(ctx, action) {
+        this.handleInitAction(ctx);
     }
 
     /**
@@ -58,21 +58,21 @@ export default class RedditHandler {
                     [
                         {
                             text: "Cute",
-                            callback_data: "cute",
+                            callback_data: "reddit:cute",
                         },
                         {
                             text: "TechMemes",
-                            callback_data: "tech-memes",
+                            callback_data: "reddit:tech-memes",
                         },
                     ],
                     [
                         {
                             text: "Art",
-                            callback_data: "art",
+                            callback_data: "reddit:art",
                         },
                         {
                             text: "NormisMemes",
-                            callback_data: "memes",
+                            callback_data: "reddit:memes",
                         },
                     ],
                 ],
@@ -111,7 +111,7 @@ export default class RedditHandler {
      * @param {import('telegraf').Context} ctx
      * @param {string} redditGroup
      */
-    async handleMemAction(ctx, redditGroup) {
+    async handleInnerAction(ctx, redditGroup) {
         const loadMsg = await ctx.reply("Processing...");
         if (!this.responseHash[ctx.from.id]) {
             this.responseHash[ctx.from.id] = [];
