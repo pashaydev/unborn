@@ -8,6 +8,8 @@ class ScrapperHandler {
      * @param {import("@anthropic-ai/sdk").Anthropic} anthropic
      * @param {Function} sendMenu
      * @param {import("openai").OpenAI} openai
+     * @param {number} maxActiveSearches
+     * @param {SearchEngine} searchEngine
      */
     constructor(args) {
         this.bot = args.bot;
@@ -16,6 +18,7 @@ class ScrapperHandler {
         this.openai = args.openai;
         this.activeSearches = [];
         this.maxActiveSearches = 2;
+        this.searchEngine = new SearchEngine();
     }
 
     initCommand(ctx, actionName) {
@@ -53,27 +56,42 @@ class ScrapperHandler {
         }
 
         console.log("Search query:", prompt);
-        const data = await scrapeDuckDuckGo(prompt);
 
-        if (!data) {
-            return ctx.reply("Failed to scrap data.");
+        // Try DuckDuckGo first, fallback to Google if it fails
+        let data;
+        try {
+            const data1 = await this.searchEngine.search(prompt, "duckduckgo");
+            const data2 = await this.searchEngine.search(prompt, "google");
+            const data3 = await this.searchEngine.search(prompt, "bing");
+
+            data = [data1, data2, data3].reduce((acc, curr) => {
+                console.log("Search Engine Data:", curr);
+                if (curr.success) {
+                    const mergedResults = acc;
+                    for (const result of curr.organic_results) {
+                        if (!mergedResults.some(r => r.link === result.link)) {
+                            mergedResults.push(result);
+                        }
+                    }
+                    return mergedResults;
+                }
+                return acc;
+            }, []);
+        } catch (error) {
+            console.error("Failed to fetch search results:", error);
         }
 
-        console.log("Search Results:");
-        console.log(JSON.stringify(data, null, 2));
-
-        const { organic_results } = data;
-
-        if (!organic_results || !organic_results.length) {
-            return ctx.reply("No results found.");
+        if (!data || !data.length) {
+            return ctx.reply("Failed to retrieve search results.");
         }
 
-        let html = ``;
+        console.log("Search Results: ", data);
 
-        for (const result of organic_results) {
-            html += `<b>${result.title}</b>\n${result.snippet}\n\n`;
-            html += `<pre>${result.link}</pre>\n\n`;
-        }
+        let html = data.reduce((acc, curr) => {
+            return (
+                acc + `\n\n<b>${curr.title}</b>\n<pre>${curr.link}</pre>\n<i>${curr.snippet}</i>`
+            );
+        }, "");
 
         try {
             // Get current html and structured data with antropic
@@ -152,89 +170,183 @@ class ScrapperHandler {
 
 export default ScrapperHandler;
 
-async function scrapeDuckDuckGo(searchQuery) {
-    let browser;
-    try {
-        browser = await puppeteer.launch({
-            headless: "new",
-            args: [
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-gpu",
-                "--window-size=1920,1080",
-                "--disable-web-security",
-                "--disable-features=IsolateOrigins,site-per-process",
-            ],
-            defaultViewport: {
-                width: 1920,
-                height: 1080,
-            },
-            ignoreHTTPSErrors: true,
-        });
+class SearchEngine {
+    constructor() {
+        this.engines = new Map();
+        this.browser = null;
+        this.initializeEngines();
+    }
 
+    initializeEngines() {
+        this.engines.set("duckduckgo", this.scrapeDuckDuckGo.bind(this));
+        this.engines.set("google", this.scrapeGoogle.bind(this));
+        this.engines.set("bing", this.scrapeBing.bind(this));
+    }
+
+    async initializeBrowser() {
+        if (!this.browser) {
+            this.browser = await puppeteer.launch({
+                headless: "new",
+                args: [
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                    "--window-size=1920,1080",
+                    "--disable-web-security",
+                    "--disable-features=IsolateOrigins,site-per-process",
+                ],
+                defaultViewport: {
+                    width: 1920,
+                    height: 1080,
+                },
+                ignoreHTTPSErrors: true,
+            });
+        }
+        return this.browser;
+    }
+
+    async closeBrowser() {
+        if (this.browser) {
+            await this.browser.close();
+            this.browser = null;
+        }
+    }
+
+    async getPage() {
+        const browser = await this.initializeBrowser();
         const page = await browser.newPage();
-
-        // Set a realistic user agent
         await page.setUserAgent(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         );
+        return page;
+    }
 
-        // Consider using a different search engine that's more automation-friendly
-        await page.goto("https://www.duckduckgo.com", {
-            waitUntil: "networkidle0",
-            timeout: 30000,
-        });
+    async search(query, engine = "duckduckgo") {
+        const searchFunction = this.engines.get(engine.toLowerCase());
+        if (!searchFunction) {
+            throw new Error(`Search engine '${engine}' not supported`);
+        }
+        return await searchFunction(query);
+    }
 
-        // Add error handling for navigation
-        await page.type("#searchbox_input", searchQuery);
-        await Promise.all([
-            page.keyboard.press("Enter"),
-            page.waitForNavigation({ waitUntil: "networkidle0" }),
-        ]);
-
-        // Wait for results with timeout and error handling
-        const resultsSelector = "[data-testid='result']";
-        await page.waitForSelector(resultsSelector, { timeout: 5000 }).catch(e => {
-            throw new Error(`Results not found: ${e.message}`);
-        });
-
-        const searchResults = await page.evaluate(() => {
-            // find elements with data-testid attribute
-            const results = Array.from(document.querySelectorAll("[data-testid='result']"));
-
-            return results.map(result => {
-                const title = result
-                    .querySelector("[data-testid='result-title-a'")
-                    ?.textContent?.trim();
-                const link = result.querySelector("[data-testid='result-extras-url-link']")?.href;
-                const snippet = result
-                    .querySelector("[data-result='snippet']")
-                    ?.textContent?.trim();
-                return { title, link, snippet };
+    async scrapeDuckDuckGo(searchQuery) {
+        let page;
+        try {
+            page = await this.getPage();
+            await page.goto("https://www.duckduckgo.com", {
+                waitUntil: "networkidle0",
+                timeout: 30000,
             });
-        });
 
-        return {
-            success: true,
-            organic_results: searchResults,
-            result_count: searchResults.length,
-        };
-    } catch (error) {
-        console.error("Scraping failed:", error.message);
-        return {
-            success: false,
-            error: error.message,
-            organic_results: [],
-            result_count: 0,
-        };
-    } finally {
-        if (browser) {
-            try {
-                await browser.close();
-            } catch (error) {
-                console.error("Error closing browser:", error.message);
-            }
+            await page.type("#searchbox_input", searchQuery);
+            await Promise.all([
+                page.keyboard.press("Enter"),
+                page.waitForNavigation({ waitUntil: "networkidle0" }),
+            ]);
+
+            const resultsSelector = "[data-testid='result']";
+            await page.waitForSelector(resultsSelector, { timeout: 5000 });
+
+            const searchResults = await page.evaluate(() => {
+                const results = Array.from(document.querySelectorAll("[data-testid='result']"));
+                return results.map(result => ({
+                    title: result
+                        .querySelector("[data-testid='result-title-a'")
+                        ?.textContent?.trim(),
+                    link: result.querySelector("[data-testid='result-extras-url-link']")?.href,
+                    snippet: result.querySelector("[data-result='snippet']")?.textContent?.trim(),
+                }));
+            });
+
+            return {
+                success: true,
+                engine: "duckduckgo",
+                organic_results: searchResults,
+                result_count: searchResults.length,
+            };
+        } catch (error) {
+            return {
+                success: false,
+                engine: "duckduckgo",
+                error: error.message,
+                organic_results: [],
+                result_count: 0,
+            };
+        } finally {
+            if (page) await page.close().catch(console.error);
+        }
+    }
+
+    async scrapeGoogle(searchQuery) {
+        let page;
+        try {
+            page = await this.getPage();
+            await page.goto(`https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`, {
+                waitUntil: "networkidle0",
+            });
+
+            const searchResults = await page.evaluate(() => {
+                const results = Array.from(document.querySelectorAll(".g"));
+                return results.map(result => ({
+                    title: result.querySelector("h3")?.textContent,
+                    link: result.querySelector("a")?.href,
+                    snippet: result.querySelector(".VwiC3b")?.textContent,
+                }));
+            });
+
+            return {
+                success: true,
+                engine: "google",
+                organic_results: searchResults,
+                result_count: searchResults.length,
+            };
+        } catch (error) {
+            return {
+                success: false,
+                engine: "google",
+                error: error.message,
+                organic_results: [],
+                result_count: 0,
+            };
+        } finally {
+            if (page) await page.close().catch(console.error);
+        }
+    }
+
+    async scrapeBing(searchQuery) {
+        let page;
+        try {
+            page = await this.getPage();
+            await page.goto(`https://www.bing.com/search?q=${encodeURIComponent(searchQuery)}`, {
+                waitUntil: "networkidle0",
+            });
+
+            const searchResults = await page.evaluate(() => {
+                const results = Array.from(document.querySelectorAll(".b_algo"));
+                return results.map(result => ({
+                    title: result.querySelector("h2")?.textContent,
+                    link: result.querySelector("a")?.href,
+                    snippet: result.querySelector(".b_caption p")?.textContent,
+                }));
+            });
+
+            return {
+                success: true,
+                engine: "bing",
+                organic_results: searchResults,
+                result_count: searchResults.length,
+            };
+        } catch (error) {
+            return {
+                success: false,
+                engine: "bing",
+                error: error.message,
+                organic_results: [],
+                result_count: 0,
+            };
+        } finally {
+            if (page) await page.close().catch(console.error);
         }
     }
 }

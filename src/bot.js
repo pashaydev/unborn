@@ -38,7 +38,10 @@ const initializeBotHandlers = async () => {
             description: "Make polite message from text to audio",
         },
         { command: "/imagegen", description: "Generate image" },
-        { command: "/scrapper", description: "Web scrapping" },
+        {
+            command: "/scrapper",
+            description: "Web scrapping across three most popular search engines",
+        },
     ]);
 
     bot.command("start", async ctx => {
