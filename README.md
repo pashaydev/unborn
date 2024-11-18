@@ -26,7 +26,7 @@ This project is a Node.js (Bun runtime) Telegram bot that utilizes SQLite for da
     export ANTHROPIC_API_KEY=your-anthropic-api-key
     export REDDIT_API_URL=reddit-api-url
     export PORT=your-port-default-3000
-    export DOMAIN=your-webhook-url
+    export TELEGRAM_WEBHOOK_URL=your-webhook-url
     export SECRET_PATH=your-secret-path-or-empty
     export STABLE_DIFFUSION_API_KEY=your-api-key
     ```

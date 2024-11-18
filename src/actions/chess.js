@@ -1,7 +1,8 @@
 import { Markup } from "telegraf";
 import Anthropic from "@anthropic-ai/sdk";
 import { saveHistory } from "../db.js";
-import { message } from "telegraf/filters";
+import { ActionRowBuilder, ButtonBuilder } from "@discordjs/builders";
+import { ButtonStyle } from "discord.js";
 
 export const BOARD_CONFIG = {
     FILES: "abcdefgh",
@@ -36,13 +37,15 @@ const RANKS = BOARD_CONFIG.RANKS;
 export default class ChessGameHandler {
     /**
      * @param {import('telegraf').Telegraf} bot
+     * @param {import('discord.js').Client} discordBot
      * @param {Anthropic} anthropic
      * @param {Function} sendMenu
      */
     constructor(args) {
-        this.bot = args.bot;
+        this.telegramBot = args.telegramBot;
         this.anthropic = args.anthropic;
         this.sendMenu = args.sendMenu;
+        this.discordBot = args.discordBot;
         this.games = new Map();
     }
 
@@ -53,6 +56,32 @@ export default class ChessGameHandler {
         this.startNewGame(ctx);
     }
 
+    convertToDiscordButton(buttons) {
+        try {
+            const discordButtonsRows = [];
+            let row = [];
+            for (const button of buttons) {
+                row.push(
+                    new ButtonBuilder()
+                        .setCustomId(button.callback_data)
+                        .setLabel(button.text)
+                        .setStyle(ButtonStyle.Secondary)
+                );
+
+                if (row.length === 5) {
+                    discordButtonsRows.push(new ActionRowBuilder().addComponents(...row));
+                    row = [];
+                } else if (buttons.indexOf(button) === buttons.length - 1) {
+                    discordButtonsRows.push(new ActionRowBuilder().addComponents(...row));
+                }
+            }
+            return discordButtonsRows;
+        } catch (error) {
+            console.error("Error converting keyboard:", error);
+            return [];
+        }
+    }
+
     async handleTextMessage(ctx) {
         const gameState = this.games.get(ctx.chat.id);
 
@@ -60,6 +89,7 @@ export default class ChessGameHandler {
         if (!isPlayerTurn) {
             return await ctx.reply("Is not your turn!");
         }
+
         const text = ctx.message.text;
         const validMoves = this.getValidMoves(gameState, gameState.playerColor);
         const commandValid = validMoves.some(m => m === text.trim());
@@ -74,6 +104,140 @@ export default class ChessGameHandler {
                     gameState.playerColor
                 )}, is not valid move!`
             );
+        }
+    }
+
+    /**
+     * @param {import('discord.js').CommandInteraction} ctx
+     * @param {string} actionName
+     */
+    async handleDiscordSlashCommand(interaction, actionName) {
+        try {
+            // Create context for the game
+            const context = {
+                chat: { id: interaction.channelId },
+                from: { id: interaction.user.id },
+                reply: async (message, keyboard) => {
+                    try {
+                        let discordButtonsRows = [];
+                        if (keyboard) {
+                            const allButtons = Array.from(
+                                keyboard?.reply_markup?.inline_keyboard ||
+                                    keyboard?.inline_keyboard ||
+                                    []
+                            ).flat();
+                            discordButtonsRows = this.convertToDiscordButton(allButtons);
+                        }
+
+                        // Check interaction state and respond accordingly
+                        if (!interaction.replied && !interaction.deferred) {
+                            await interaction.reply({
+                                content: message,
+                                components: discordButtonsRows,
+                            });
+                        } else {
+                            await interaction.channel.send({
+                                content: message,
+                                components: discordButtonsRows,
+                            });
+                        }
+                    } catch (error) {
+                        console.error("Error sending reply:", error);
+                    }
+                },
+            };
+
+            // Start the game
+            await this.startNewGame(context);
+
+            // Set up button collector
+            const filter = i => i.user.id === interaction.user.id;
+            const collector = interaction.channel.createMessageComponentCollector({
+                filter,
+                time: 3600000, // 1 hour timeout
+            });
+
+            collector.on("collect", async i => {
+                try {
+                    const gameState = this.games.get(interaction.channelId);
+                    if (!gameState) {
+                        await i.reply({
+                            content: "No active game found.",
+                            ephemeral: true,
+                        });
+                        return;
+                    }
+
+                    switch (i.customId) {
+                        case "resign":
+                            this.games.delete(interaction.channelId);
+                            await i.update({
+                                content: "Game over. You resigned.",
+                                components: [],
+                            });
+                            collector.stop();
+                            return;
+
+                        case "dummy_action":
+                            await i.deferUpdate();
+                            return;
+
+                        default:
+                            if (i.customId.startsWith("move_")) {
+                                await i.deferUpdate();
+                                const move = i.customId.replace("move_", "");
+                                const moveContext = {
+                                    ...context,
+                                    reply: async (message, keyboard) => {
+                                        const discordButtonsRows = keyboard
+                                            ? this.convertToDiscordButton(
+                                                  keyboard.reply_markup.inline_keyboard.flat()
+                                              )
+                                            : [];
+                                        await i.channel.send({
+                                            content: message,
+                                            components: discordButtonsRows,
+                                        });
+                                    },
+                                };
+                                await this.executeMove(gameState, move, moveContext);
+                                await this.handleAIResponse(gameState, moveContext);
+                            } else if (i.customId.startsWith("page_")) {
+                                await i.deferUpdate();
+                                const page = parseInt(i.customId.split("_")[1]);
+                                const keyboard = this.getMoveKeyboard(gameState, page);
+                                const discordButtonsRows = this.convertToDiscordButton(
+                                    keyboard.reply_markup.inline_keyboard.flat()
+                                );
+                                await i.message.edit({
+                                    components: discordButtonsRows,
+                                });
+                            }
+                    }
+                } catch (error) {
+                    console.error("Error handling button interaction:", error);
+                    await i
+                        .reply({
+                            content: "An error occurred while processing your move.",
+                            ephemeral: true,
+                        })
+                        .catch(console.error);
+                }
+            });
+
+            collector.on("end", () => {
+                this.games.delete(interaction.channelId);
+            });
+        } catch (error) {
+            console.error("Error in handleDiscordSlashCommand:", error);
+            if (!interaction.replied && !interaction.deferred) {
+                await interaction
+                    .reply({
+                        content: "An error occurred while starting the game.",
+                        ephemeral: true,
+                    })
+                    .catch(console.error);
+            }
         }
     }
 
@@ -627,18 +791,23 @@ export default class ChessGameHandler {
             );
         }
 
-        this.bot.action(/move_(.+)/, ctx => this.handleMove(ctx));
-        this.bot.action("resign", ctx => this.handleResign(ctx));
-        this.bot.action(/page_(\d+)/, ctx => this.handlePageChange(ctx));
+        this.telegramBot.action(/move_(.+)/, ctx => this.handleMove(ctx));
+        this.telegramBot.action("resign", ctx => this.handleResign(ctx));
+        this.telegramBot.action(/page_(\d+)/, ctx => this.handlePageChange(ctx));
         // setup action for text command
-        // this.bot.on(message("text"), ctx => this.handleTextCommand(ctx));
+        // this.telegramBot.on(message("text"), ctx => this.handleTextCommand(ctx));
     }
 
     parseMoveToReadable(move, gameState, color) {
         try {
-            const [fromFile, fromRank, toFile, toRank] = move.split("");
+            const [fromFile, fromRank, toFile, toRank] = move.replace("move_", "").split("");
             const fromSquare = this.getSquareFromNotation(fromFile + fromRank, color);
             const toSquare = this.getSquareFromNotation(toFile + toRank, color);
+
+            if (!fromSquare || !toSquare) {
+                return "Invalid move";
+            }
+
             const piece = gameState.board[fromSquare[0]][fromSquare[1]];
 
             // Find the piece name by checking both WHITE and BLACK pieces

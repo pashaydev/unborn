@@ -157,6 +157,6 @@ export const getHistory = ({ userId }) => {
  * @param {Object} args - History entry parameters
  * @param {number} args.userId - Telegram user ID
  * @param {string} args.userInput - User's input
- * @param {string} args.botResponse - Bot's response
+ * @param {string} args.telegramBotResponse - Bot's response
  */
 export const saveHistory = args => insertHistory(args);

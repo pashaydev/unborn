@@ -5,6 +5,7 @@
     "type": "module",
     "scripts": {
         "start": "bun ./src/bot.js",
+        "dev": "bun --inspect ./src/bot.js",
         "docker:build": "docker build -t unborn . && docker run -p 49160:8080 -d unborn",
         "test": "bun test"
     },
@@ -14,6 +15,7 @@
     "dependencies": {
         "@anthropic-ai/sdk": "^0.32.1",
         "crypto": "^1.0.1",
+        "discord.js": "^14.16.3",
         "elysia": "^1.1.24",
         "officeparser": "^5.0.0",
         "openai": "^4.71.1",
