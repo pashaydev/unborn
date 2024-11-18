@@ -1,11 +1,13 @@
 import { Elysia } from "elysia";
 import { join } from "path";
 import crypto from "crypto";
+import DatabaseSaver from "./database/db-saver.js";
+import { DatabaseManager } from "./database/db.js";
 
 // Get current directory and create worker paths
 const currentDir = import.meta.dir;
-const telegramWorkerPath = join(currentDir, "telegram-worker.js");
-const discordWorkerPath = join(currentDir, "discord-worker.js");
+const telegramWorkerPath = join(currentDir, "workers/telegram-worker.js");
+const discordWorkerPath = join(currentDir, "workers/discord-worker.js");
 
 // Create workers
 const telegramWorker = new Worker(telegramWorkerPath);
@@ -30,6 +32,11 @@ discordWorker.postMessage(config);
 discordWorker.onmessage = event => {
     console.log(event.data);
 };
+
+// Setup database
+const db = new DatabaseManager();
+// Setup database saver
+const dbSaver = new DatabaseSaver(db);
 
 // Setup Elysia server
 const elysia = new Elysia();

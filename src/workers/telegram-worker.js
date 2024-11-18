@@ -1,5 +1,5 @@
 import { parentPort } from "worker_threads";
-import startTelegramBot from "./telegram-bot.js";
+import startTelegramBot from "../bots/telegram-bot.js";
 
 parentPort.onmessage = ({ data }) => {
     // console.log("Telegram worker data:", data);

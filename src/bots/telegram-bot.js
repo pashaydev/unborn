@@ -1,9 +1,9 @@
 import { Telegraf } from "telegraf";
-import ActionManager from "./actions/actions-manager.js";
+import ActionManager from "../actions/actions-manager.js";
 import { parentPort } from "worker_threads";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
-import UserManager from "./user-manager.js";
+import UserManager from "../user-manager.js";
 
 export default function startTelegramBot(config) {
     const parsedConfig = config;

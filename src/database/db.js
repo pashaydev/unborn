@@ -1,5 +1,6 @@
 import { Database } from "bun:sqlite";
 import fs from "fs";
+import DatabaseSaver from "./db-saver";
 
 export class DatabaseManager {
     static SQL_QUERIES = {
@@ -25,26 +26,26 @@ export class DatabaseManager {
     };
 
     constructor() {
-        this.dbPath = this.determineDbPath();
-        this.dbDir = this.determineDbDir();
+        this.dbPath = DatabaseManager.determineDbPath();
+        this.dbDir = DatabaseManager.determineDbDir();
         this.db = null;
     }
 
-    determineDbPath() {
+    static determineDbPath() {
         const pathMap = {
             production: "/data/db.sqlite",
             test: ":memory:",
             development: "db.sqlite",
         };
 
-        return pathMap[process.env.NODE_ENV] || "db.sqlite";
+        return pathMap[Bun.env.NODE_ENV] || "db.sqlite";
     }
 
-    determineDbDir() {
-        if (process.env.NODE_ENV === "production") {
+    static determineDbDir() {
+        if (Bun.env.NODE_ENV === "production") {
             return "/data";
         }
-        return process.env.NODE_ENV ? "" : "./data";
+        return Bun.env.NODE_ENV ? "" : "./data";
     }
 
     ensureDirectoryExists() {
@@ -62,11 +63,16 @@ export class DatabaseManager {
         );
     }
 
-    initialize() {
+    async initialize() {
         try {
             this.ensureDirectoryExists();
 
             console.log("Initializing database...", this.dbPath);
+
+            if (Bun.env.NODE_ENV !== "test") {
+                // Restore database from Google Cloud Storage
+                await DatabaseSaver.restoreDatabase();
+            }
 
             this.db = new Database(this.dbPath, {
                 verbose: console.log,
@@ -126,9 +132,9 @@ export const databaseManager = new DatabaseManager();
 // Export SQL queries for external use
 export const { SQL_QUERIES } = DatabaseManager;
 
-export const insertHistory = ({ userInput, botResponse, userId }) => {
+export const insertHistory = async ({ userInput, botResponse, userId }) => {
     // Get database instance
-    const db = databaseManager.getDatabase();
+    const db = await databaseManager.getDatabase();
 
     // Use SQL queries
     db.query(SQL_QUERIES.INSERT_HISTORY).run(userId, userInput || "", botResponse || "");
@@ -136,14 +142,15 @@ export const insertHistory = ({ userInput, botResponse, userId }) => {
     console.log("Add new items to db", userInput, botResponse, userId);
 };
 
-export const addNewUser = ({ userId, username }) => {
-    const db = databaseManager.getDatabase();
+export const addNewUser = async ({ userId, username }) => {
+    const db = await databaseManager.getDatabase();
+    console.log("Add new user to db", userId, username, db);
     db.query("INSERT INTO users (user_id, username) VALUES (?, ?)").run(userId, username);
     console.log("Add new user to db", userId, username);
 };
 
-export const getHistory = ({ userId }) => {
-    const db = databaseManager.getDatabase();
+export const getHistory = async ({ userId }) => {
+    const db = await databaseManager.getDatabase();
 
     const rows = db.prepare("SELECT * FROM history WHERE user_id = ?").all(userId);
 
@@ -159,4 +166,4 @@ export const getHistory = ({ userId }) => {
  * @param {string} args.userInput - User's input
  * @param {string} args.telegramBotResponse - Bot's response
  */
-export const saveHistory = args => insertHistory(args);
+export const saveHistory = async args => await insertHistory(args);

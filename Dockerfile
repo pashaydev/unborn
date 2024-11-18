@@ -94,4 +94,4 @@ RUN mkdir -p /data && chmod 777 /data
 # run the app
 USER bun
 EXPOSE 3000/tcp
-ENTRYPOINT [ "bun", "run", "src/bot.js" ]
+ENTRYPOINT [ "bun", "run", "src/index.js" ]

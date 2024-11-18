@@ -1,4 +1,4 @@
-import { saveHistory } from "../db.js"; // Added .js extension
+import { saveHistory } from "../database/db.js"; // Added .js extension
 import { message } from "telegraf/filters";
 import { parseOfficeAsync } from "officeparser";
 import * as pdfjsLib from "pdfjs-dist";

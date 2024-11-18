@@ -1,19 +1,20 @@
 {
     "name": "unborn",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "main": "index.js",
     "type": "module",
     "scripts": {
-        "start": "bun ./src/bot.js",
-        "dev": "bun --inspect ./src/bot.js",
+        "start": "bun ./src/index.js",
+        "dev": "bun --inspect ./src/index.js",
         "docker:build": "docker build -t unborn . && docker run -p 49160:8080 -d unborn",
         "test": "bun test"
     },
     "author": "PashaYakubovsky",
     "license": "ISC",
-    "description": "Telegram bot",
+    "description": "unborn is multiplatfrom bot for discord and telegram",
     "dependencies": {
         "@anthropic-ai/sdk": "^0.32.1",
+        "@google-cloud/storage": "^7.14.0",
         "crypto": "^1.0.1",
         "discord.js": "^14.16.3",
         "elysia": "^1.1.24",

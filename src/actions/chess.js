@@ -1,6 +1,6 @@
 import { Markup } from "telegraf";
 import Anthropic from "@anthropic-ai/sdk";
-import { saveHistory } from "../db.js";
+import { saveHistory } from "../database/db.js";
 import { ActionRowBuilder, ButtonBuilder } from "@discordjs/builders";
 import { ButtonStyle } from "discord.js";
 
@@ -791,11 +791,11 @@ export default class ChessGameHandler {
             );
         }
 
-        this.telegramBot.action(/move_(.+)/, ctx => this.handleMove(ctx));
-        this.telegramBot.action("resign", ctx => this.handleResign(ctx));
-        this.telegramBot.action(/page_(\d+)/, ctx => this.handlePageChange(ctx));
-        // setup action for text command
-        // this.telegramBot.on(message("text"), ctx => this.handleTextCommand(ctx));
+        if (this.telegramBot) {
+            this.telegramBot.action(/move_(.+)/, ctx => this.handleMove(ctx));
+            this.telegramBot.action("resign", ctx => this.handleResign(ctx));
+            this.telegramBot.action(/page_(\d+)/, ctx => this.handlePageChange(ctx));
+        }
     }
 
     parseMoveToReadable(move, gameState, color) {

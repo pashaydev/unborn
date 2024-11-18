@@ -1,5 +1,5 @@
 import { Telegraf } from "telegraf";
-import { saveHistory } from "../db.js";
+import { saveHistory } from "../database/db.js";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 
 export default class RedditHandler {
@@ -89,7 +89,6 @@ export default class RedditHandler {
      * @description Handles discord slash command
      */
     async handleDiscordSlashCommand(interaction) {
-        // send keyboard to user
         const keyboard = [
             new ButtonBuilder()
                 .setCustomId("reddit:cute")
@@ -111,43 +110,39 @@ export default class RedditHandler {
 
         const row1 = new ActionRowBuilder().addComponents(keyboard[0], keyboard[1]);
         const row2 = new ActionRowBuilder().addComponents(keyboard[2], keyboard[3]);
-        // if (!interaction.replied && interaction.deferred) {
-        // interaction.editReply("Choose");
-        // }
 
-        // if (!interaction.deferred) {
-        //     await interaction.deferReply();
-        // }
-        interaction.editReply({
+        const reply = await interaction.editReply({
             components: [row1, row2],
             content: "Choose",
         });
 
-        this.discordBot.on("interactionCreate", async interaction => {
-            if (!interaction.isButton()) return;
+        const collector = reply.createMessageComponentCollector({
+            time: 60000, // Optional: collector will stop after 60 seconds
+        });
 
+        collector.on("collect", async buttonInteraction => {
             const context = {
                 from: {
-                    id: interaction.user.id,
+                    id: buttonInteraction.user.id,
                 },
                 reply: async message => {
-                    return await interaction.channel.send(message);
+                    return await buttonInteraction.channel.send(message);
                 },
                 replyWithVideo: async message => {
-                    return await interaction.channel.send(message);
+                    return await buttonInteraction.channel.send(message);
                 },
                 replyWithAnimation: async message => {
-                    return await interaction.channel.send(message);
+                    return await buttonInteraction.channel.send(message);
                 },
             };
 
-            if (interaction.customId === "reddit:cute") {
+            if (buttonInteraction.customId === "reddit:cute") {
                 await this.handleInnerAction(context, "cute.json");
-            } else if (interaction.customId === "reddit:tech-memes") {
+            } else if (buttonInteraction.customId === "reddit:tech-memes") {
                 await this.handleInnerAction(context, "ProgrammingHumor.json");
-            } else if (interaction.customId === "reddit:art") {
+            } else if (buttonInteraction.customId === "reddit:art") {
                 await this.handleInnerAction(context, "art.json");
-            } else if (interaction.customId === "reddit:memes") {
+            } else if (buttonInteraction.customId === "reddit:memes") {
                 await this.handleInnerAction(context, "memes.json");
             }
         });

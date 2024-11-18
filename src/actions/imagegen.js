@@ -1,5 +1,5 @@
 import { AttachmentBuilder } from "discord.js";
-import { saveHistory } from "../db.js";
+import { saveHistory } from "../database/db.js";
 
 export default class ImagegenHandler {
     /**
