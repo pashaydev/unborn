@@ -1,4 +1,4 @@
-import { addNewUser } from "./db";
+import { addNewUser } from "./database/db";
 
 class UserManager {
     /**

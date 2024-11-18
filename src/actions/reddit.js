@@ -1,19 +1,20 @@
 import { Telegraf } from "telegraf";
-import { saveHistory } from "../db.js";
+import { saveHistory } from "../database/db.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 
 export default class RedditHandler {
     /**
-     *
-     * @param {Telegraf} bot
+     * @param {Telegraf} telegramBot
      * @param {string} redditApiUrl
      * @param {string} userAgent
      * @param {string} contentType
      * @param {number} maxAttempts
      */
     constructor(args) {
-        this.bot = args.bot;
+        this.telegramBot = args.telegramBot;
         this.anthropic = args.anthropic;
         this.sendMenu = args.sendMenu;
+        this.discordBot = args.discordBot;
 
         this.maxAttempts = 5;
         this.redditApiUrl = Bun.env.REDDIT_API_URL;
@@ -24,18 +25,20 @@ export default class RedditHandler {
 
         this.params = "?limit=1000&sort=new";
 
-        this.bot.action("reddit:cute", ctx => {
-            this.handleInnerAction(ctx, "cute.json");
-        });
-        this.bot.action("reddit:tech-memes", ctx => {
-            this.handleInnerAction(ctx, "ProgrammingHumor.json");
-        });
-        this.bot.action("reddit:art", ctx => {
-            this.handleInnerAction(ctx, "art.json");
-        });
-        this.bot.action("reddit:memes", ctx => {
-            this.handleInnerAction(ctx, "memes.json");
-        });
+        if (this.telegramBot) {
+            this.telegramBot.action("reddit:cute", ctx => {
+                this.handleInnerAction(ctx, "cute.json");
+            });
+            this.telegramBot.action("reddit:tech-memes", ctx => {
+                this.handleInnerAction(ctx, "ProgrammingHumor.json");
+            });
+            this.telegramBot.action("reddit:art", ctx => {
+                this.handleInnerAction(ctx, "art.json");
+            });
+            this.telegramBot.action("reddit:memes", ctx => {
+                this.handleInnerAction(ctx, "memes.json");
+            });
+        }
     }
 
     initAction(ctx, action) {
@@ -80,6 +83,71 @@ export default class RedditHandler {
         });
     }
 
+    /**
+     * @param {import('discord.js').CommandInteraction} interaction
+     * @returns {void}
+     * @description Handles discord slash command
+     */
+    async handleDiscordSlashCommand(interaction) {
+        const keyboard = [
+            new ButtonBuilder()
+                .setCustomId("reddit:cute")
+                .setLabel("Cute")
+                .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+                .setCustomId("reddit:tech-memes")
+                .setLabel("TechMemes")
+                .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+                .setCustomId("reddit:art")
+                .setLabel("Art")
+                .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+                .setCustomId("reddit:memes")
+                .setLabel("NormisMemes")
+                .setStyle(ButtonStyle.Secondary),
+        ];
+
+        const row1 = new ActionRowBuilder().addComponents(keyboard[0], keyboard[1]);
+        const row2 = new ActionRowBuilder().addComponents(keyboard[2], keyboard[3]);
+
+        const reply = await interaction.editReply({
+            components: [row1, row2],
+            content: "Choose",
+        });
+
+        const collector = reply.createMessageComponentCollector({
+            time: 60000, // Optional: collector will stop after 60 seconds
+        });
+
+        collector.on("collect", async buttonInteraction => {
+            const context = {
+                from: {
+                    id: buttonInteraction.user.id,
+                },
+                reply: async message => {
+                    return await buttonInteraction.channel.send(message);
+                },
+                replyWithVideo: async message => {
+                    return await buttonInteraction.channel.send(message);
+                },
+                replyWithAnimation: async message => {
+                    return await buttonInteraction.channel.send(message);
+                },
+            };
+
+            if (buttonInteraction.customId === "reddit:cute") {
+                await this.handleInnerAction(context, "cute.json");
+            } else if (buttonInteraction.customId === "reddit:tech-memes") {
+                await this.handleInnerAction(context, "ProgrammingHumor.json");
+            } else if (buttonInteraction.customId === "reddit:art") {
+                await this.handleInnerAction(context, "art.json");
+            } else if (buttonInteraction.customId === "reddit:memes") {
+                await this.handleInnerAction(context, "memes.json");
+            }
+        });
+    }
+
     async fetchMeme(partOfUrl) {
         let success = false;
         let attempts = 0;
@@ -112,7 +180,7 @@ export default class RedditHandler {
      * @param {string} redditGroup
      */
     async handleInnerAction(ctx, redditGroup) {
-        const loadMsg = await ctx.reply("Processing...");
+        // const loadMsg = await ctx.reply("Processing...");
         if (!this.responseHash[ctx.from.id]) {
             this.responseHash[ctx.from.id] = [];
         }
@@ -162,7 +230,7 @@ export default class RedditHandler {
                 botResponse: randomPost?.data?.url,
             });
 
-            await ctx.deleteMessage(loadMsg.message_id);
+            // await ctx.deleteMessage(loadMsg.message_id);
         } catch (error) {
             console.error(error);
 

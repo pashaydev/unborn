@@ -1,6 +1,6 @@
 import assert from "node:assert";
 import { test, describe, it, beforeEach, expect } from "bun:test";
-import { databaseManager, SQL_QUERIES } from "./db.js";
+import { databaseManager, SQL_QUERIES } from "./database/db.js";
 
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
@@ -8,6 +8,7 @@ import { Telegraf } from "telegraf";
 import ChessGameHandler, { BOARD_CONFIG } from "./actions/chess.js";
 import { Database } from "bun:sqlite";
 import puppeteer from "puppeteer";
+import { Client, GatewayIntentBits, Partials } from "discord.js";
 
 const record = {
     userId: 10,
@@ -74,10 +75,22 @@ test("Reddit API should return a valid response", async () => {
     expect(response.ok).toBe(true);
 });
 
-test("Bot should have valid token", async () => {
+test("Telegram Bot should have valid token", async () => {
     // Create bot instance with mocked methods
-    const bot = new Telegraf(Bun.env.BOT_TOKEN);
+    const bot = new Telegraf(Bun.env.TELEGRAM_BOT_TOKEN);
     expect(bot.token).toBeTruthy();
+    bot.drop();
+});
+
+test("Discord Bot should have valid token", async () => {
+    const bot = new Client({
+        intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+        partials: [Partials.Channel],
+    });
+
+    bot.login(Bun.env.DISCORD_BOT_TOKEN);
+    expect(bot.token).toBeTruthy();
+    bot.destroy();
 });
 
 test("Antropic API response correctly", async () => {

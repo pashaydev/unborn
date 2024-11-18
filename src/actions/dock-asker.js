@@ -1,4 +1,4 @@
-import { saveHistory } from "../db.js"; // Added .js extension
+import { saveHistory } from "../database/db.js"; // Added .js extension
 import { message } from "telegraf/filters";
 import { parseOfficeAsync } from "officeparser";
 import * as pdfjsLib from "pdfjs-dist";
@@ -13,10 +13,11 @@ export default class DockAsker {
      * @returns {DockAsker}
      */
     constructor(args) {
-        this.bot = args.bot;
+        this.telegramBot = args.telegramBot;
         this.anthropic = args.anthropic;
         this.sendMenu = args.sendMenu;
         this.messageHash = {};
+        this.activeUsers = new Set();
     }
 
     initAction(ctx, action) {
@@ -31,33 +32,98 @@ export default class DockAsker {
             // this.setupMessageHandlers();
         }
     }
+    async handleDiscordSlashCommand(interaction, actionName) {
+        try {
+            const userId = interaction.user.id;
+            this.activeUsers.add(userId);
+
+            await interaction.editReply("Supported file types: .txt, .pdf");
+            // await interaction.deferReply();
+
+            const inputText = interaction.options.getString("input");
+            const docFile = interaction.options.getAttachment("attachment");
+
+            // Check file size
+            if (docFile.size > 8388608) {
+                // 8MB limit for most bots
+                return interaction.reply("File too large!");
+            }
+
+            console.log("inputText", inputText);
+            console.log("docFile", docFile);
+
+            const fileBlobResponse = await fetch(docFile.url);
+            const fileBlob = await fileBlobResponse.blob();
+            const fileType = docFile.contentType;
+            const fileBuffer = await fileBlob.arrayBuffer();
+
+            const context = {
+                from: {
+                    id: userId,
+                },
+                // ctx.message.document.mime_type
+                message: {
+                    document: {
+                        file_id: docFile.id,
+                        mime_type: docFile.contentType,
+                        fileBlob: fileBlob,
+                        fileType: fileType,
+                        fileBuffer: fileBuffer,
+                    },
+                    text: inputText,
+                    caption: inputText,
+                },
+                attachment: docFile,
+                reply: async message => {
+                    try {
+                        await interaction.channel.send(message);
+                    } catch (error) {
+                        console.error("Error:", error);
+                    }
+                },
+                userId: userId,
+            };
+
+            await this.handleDocumentMessage(context, docFile);
+        } catch (error) {
+            console.error("Error:", error);
+        }
+    }
+
+    /**
+     * @param {import('discord.js').Attachment} ctx - Discord message object
+     */
+    parseDiscordFile(attachment) {}
 
     // setupMessageHandlers() {
     //     // Using one-time handlers to prevent multiple registrations
-    //     this.bot.on(message("document"), ctx => this.handleDocumentMessage(ctx), { once: true });
-    //     this.bot.on(message("text"), ctx => this.handleTextMessage(ctx), { once: true });
+    //     this.telegramBot.on(message("document"), ctx => this.handleDocumentMessage(ctx), { once: true });
+    //     this.telegramBot.on(message("text"), ctx => this.handleTextMessage(ctx), { once: true });
     // }
 
     async handleDocumentMessage(ctx) {
         const fileType = ctx.message.document.mime_type;
         const validTypes = [
             "text/plain",
+            "text/plain; charset=utf-8",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             "application/pdf",
+            "application/msword",
         ];
 
+        console.log("File type:", fileType);
         if (!validTypes.includes(fileType)) {
-            ctx.reply("Invalid file type. Please send a .txt, .pdf, .docx, .pdf, or .doc file.");
-            return this.sendMenu(
-                ctx,
-                "Interesting fact: people who send wrong file usually not read accepted formats"
+            return ctx.reply(
+                "Invalid file type. Please send a .txt, .pdf, .docx, .pdf, or .doc file."
             );
         }
 
         this.messageHash[ctx.from.id] = {
             fileId: ctx.message.document.file_id,
             fileType,
+            fileBlob: ctx.message.document?.fileBlob,
+            fileBuffer: ctx.message.document?.fileBuffer,
         };
 
         saveHistory({
@@ -89,8 +155,9 @@ export default class DockAsker {
 
         console.log(`File ID: ${fileData.fileId}`);
         console.log(`User Text: ${userText}`);
+        let fileContent = "";
 
-        const fileContent = await this.parseFile(fileData.fileId, fileData.fileType);
+        fileContent = await this.parseFile(fileData);
 
         if (!fileContent) {
             ctx.reply("Error parsing file. Please try again.");
@@ -178,69 +245,87 @@ export default class DockAsker {
         this.sendMenu(ctx, "Congrats, you got a response.");
     }
 
-    async parseFile(fileId, fileType) {
+    async parseFile(fileData) {
+        let fileBlob;
+        let fileLink;
+
         try {
-            const fileLink = await this.bot.telegram.getFileLink(fileId);
-            const fileBlob = await fetch(fileLink);
-
-            const handle = {
-                "text/plain": async fileBlob => {
-                    try {
-                        const fileBuffer = await fileBlob.arrayBuffer();
-                        const fileContent = new TextDecoder().decode(fileBuffer);
-                        return fileContent;
-                    } catch (error) {
-                        console.error("Error handling text file:", error);
-                        return null;
-                    }
-                },
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-                    async fileBlob => {
-                        try {
-                            const buffer = await fileBlob.arrayBuffer();
-                            const fileBuffer = Buffer.from(buffer);
-                            const data = await parseOfficeAsync(fileBuffer);
-                            return data.toString();
-                        } catch (error) {
-                            console.error("Error handling Word:", error);
-                            return null;
-                        }
-                    },
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-                    async fileBlob => {
-                        try {
-                            const buffer = await fileBlob.arrayBuffer();
-                            const fileBuffer = Buffer.from(buffer);
-                            const data = await parseOfficeAsync(fileBuffer);
-                            return data.toString();
-                        } catch (error) {
-                            console.error("Error handling Excel:", error);
-                            return null;
-                        }
-                    },
-                "application/pdf": async () => {
-                    try {
-                        const buffer = await fileBlob.arrayBuffer();
-                        const result = await PDFParser.parsePDF(buffer);
-
-                        if (result) {
-                            return result;
-                        }
-                    } catch (error) {
-                        console.error("Error handling PDF:", error);
-                        return null;
-                    }
-                },
-            };
-
-            if (handle[fileType]) {
-                return handle[fileType](fileBlob);
-            } else {
-                throw new Error("Unsupported file type.");
-            }
+            fileLink = await this.telegramBot.telegram.getFileLink(fileData.fileId);
+            fileBlob = await fetch(fileLink);
         } catch (err) {
             console.error(err);
-            return null;
+        }
+
+        if (!fileBlob) {
+            fileBlob = fileData.fileBlob;
+        }
+
+        const handleTextPlain = async fileBlob => {
+            try {
+                const fileBuffer = await fileBlob.arrayBuffer();
+                const fileContent = new TextDecoder().decode(fileBuffer);
+                return fileContent;
+            } catch (error) {
+                console.error("Error handling text file:", error);
+                return null;
+            }
+        };
+
+        const handle = {
+            "text/plain": handleTextPlain,
+            "text/plain; charset=utf-8": handleTextPlain,
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+                async fileBlob => {
+                    try {
+                        const buffer = await fileBlob.arrayBuffer();
+                        const fileBuffer = Buffer.from(buffer);
+                        const data = await parseOfficeAsync(fileBuffer);
+                        return data.toString();
+                    } catch (error) {
+                        console.error("Error handling Word:", error);
+                        return null;
+                    }
+                },
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": async fileBlob => {
+                try {
+                    const buffer = await fileBlob.arrayBuffer();
+                    const fileBuffer = Buffer.from(buffer);
+                    const data = await parseOfficeAsync(fileBuffer);
+                    return data.toString();
+                } catch (error) {
+                    console.error("Error handling Excel:", error);
+                    return null;
+                }
+            },
+            "application/pdf": async () => {
+                try {
+                    const buffer = await fileBlob.arrayBuffer();
+                    const result = await PDFParser.parsePDF(buffer);
+
+                    if (result) {
+                        return result;
+                    }
+                } catch (error) {
+                    console.error("Error handling PDF:", error);
+                    return null;
+                }
+            },
+            "application/msword": async fileBlob => {
+                try {
+                    const fileBuffer = await fileBlob.arrayBuffer();
+                    const fileContent = new TextDecoder().decode(fileBuffer);
+                    return fileContent;
+                } catch (error) {
+                    console.error("Error handling text file:", error);
+                    return null;
+                }
+            },
+        };
+
+        if (handle[fileData.fileType]) {
+            return handle[fileData.fileType](fileBlob);
+        } else {
+            throw new Error("Unsupported file type.");
         }
     }
 }

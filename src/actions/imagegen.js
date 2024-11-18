@@ -1,4 +1,5 @@
-import { saveHistory } from "../db.js";
+import { AttachmentBuilder } from "discord.js";
+import { saveHistory } from "../database/db.js";
 
 export default class ImagegenHandler {
     /**
@@ -7,7 +8,7 @@ export default class ImagegenHandler {
      * @param {function} sendMenu
      */
     constructor(args) {
-        this.bot = args.bot;
+        this.telegramBot = args.telegramBot;
         this.sendMenu = args.sendMenu;
         this.activeUsers = new Set();
         this.userInteractions = {};
@@ -18,6 +19,49 @@ export default class ImagegenHandler {
     }
     initCommand(ctx, action) {
         this.handleInitAction(ctx);
+    }
+
+    async handleDiscordSlashCommand(interaction, actionName) {
+        const userId = interaction.user.id;
+        this.activeUsers.add(userId);
+        const inputText = interaction.options.getString("input");
+
+        try {
+            const context = {
+                from: {
+                    id: userId,
+                },
+
+                reply: async message => {
+                    try {
+                        await interaction.deferReply();
+                        await interaction.editReply(message);
+                    } catch (error) {
+                        console.error("Error:", error);
+                    }
+                },
+                userId: userId,
+                replyWithPhoto: async image => {
+                    try {
+                        const attachment = new AttachmentBuilder(image.source, "image.png");
+                        await interaction.channel.send({
+                            files: [attachment],
+                        });
+
+                        await interaction.editReply(inputText);
+                    } catch (error) {
+                        console.error("Error:", error);
+                    }
+                },
+            };
+
+            await this.handleGenerateImage(context, inputText);
+        } catch (error) {
+            console.error("Error:", error);
+            await interaction.editReply("An error occurred while generating the image");
+        }
+
+        this.activeUsers.delete(userId);
     }
 
     async handleTextMessage(ctx) {

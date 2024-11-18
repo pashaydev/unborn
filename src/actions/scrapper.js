@@ -4,18 +4,45 @@ import puppeteer from "puppeteer";
 
 class ScrapperHandler {
     /**
-     * @param {import("telegraf").Telegraf} bot
-     * @param {import("@anthropic-ai/sdk").Anthropic} anthropic
-     * @param {Function} sendMenu
-     * @param {import("openai").OpenAI} openai
-     * @param {number} maxActiveSearches
-     * @param {SearchEngine} searchEngine
+     * @type {import("telegraf").Telegraf}
      */
+    telegramBot;
+
+    /**
+     * @type {import("@anthropic-ai/sdk").Anthropic}
+     */
+    anthropic;
+
+    /**
+     * @type {import("discord.js").Client}
+     */
+    discordBot;
+
+    /**
+     * @type {Function}
+     */
+    sendMenu;
+
+    /**
+     * @type {import("openai").OpenAI}
+     */
+    openai;
+
+    /**
+     * @type {number}
+     */
+    maxActiveSearches;
+
+    /**
+     * @type {SearchEngine}
+     */
+    searchEngine;
     constructor(args) {
-        this.bot = args.bot;
+        this.telegramBot = args.telegramBot;
         this.anthropic = args.anthropic;
         this.sendMenu = args.sendMenu;
         this.openai = args.openai;
+        this.discordBot = args.discordBot;
         this.activeSearches = [];
         this.maxActiveSearches = 2;
         this.searchEngine = new SearchEngine();
@@ -29,6 +56,48 @@ class ScrapperHandler {
     }
     handleTextMessage(ctx, actionName) {
         this.handleScrapper(ctx, actionName);
+    }
+    /**
+     *
+     * @param {import("discord.js").Interaction} interaction
+     */
+    async handleDiscordSlashCommand(interaction) {
+        try {
+            const { options } = interaction;
+            const prompt = options.getString("input");
+            const context = {
+                message: {
+                    text: prompt,
+                },
+                from: {
+                    id: interaction.user.id,
+                },
+                reply: async text => {
+                    try {
+                        await interaction.deferReply();
+                        await interaction.editReply(text);
+                    } catch (error) {
+                        console.error("Failed to reply to discord interaction:", error);
+                    }
+                },
+                replyWithHTML: async text => {
+                    try {
+                        if (!interaction.deferred && !interaction.replied) {
+                            await interaction.deferReply();
+                        }
+                        await interaction.channel.send({
+                            content: text,
+                            allowedMentions: { parse: [] },
+                        });
+                    } catch (error) {
+                        console.error("Failed to reply to discord interaction with HTML:", error);
+                    }
+                },
+            };
+            await this.handleScrapper(context, prompt);
+        } catch (error) {
+            console.error("Failed to handle discord slash command:", error);
+        }
     }
 
     /**
@@ -57,7 +126,6 @@ class ScrapperHandler {
 
         console.log("Search query:", prompt);
 
-        // Try DuckDuckGo first, fallback to Google if it fails
         let data;
         try {
             const data1 = await this.searchEngine.search(prompt, "duckduckgo");
@@ -96,7 +164,7 @@ class ScrapperHandler {
         try {
             // Get current html and structured data with antropic
             const completion = await this.openai.chat.completions.create({
-                model: "gpt-4o",
+                model: "gpt-3.5-turbo",
                 temperature: 0.5,
                 max_tokens: 3000,
                 messages: [

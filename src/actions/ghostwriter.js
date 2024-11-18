@@ -1,9 +1,9 @@
-import { message } from "telegraf/filters";
-import { saveHistory } from "../db.js";
+import { saveHistory } from "../database/db.js";
 import fs from "fs";
 import os from "os";
 import fetch from "node-fetch";
 import path from "path";
+import { AttachmentBuilder } from "discord.js";
 
 const GHOSTWRITER_SYSTEM_MESSAGE = `
     You are a ghostwriter tasked with rephrasing angry or hateful messages into more constructive and less inflammatory language. Your goal is to maintain the core message while removing aggressive tone, insults, and offensive language. Follow these guidelines:
@@ -34,7 +34,7 @@ class GhostwriterHandler {
      * @returns {GhostwriterHandler}
      */
     constructor(args) {
-        this.bot = args.bot;
+        this.telegramBot = args.telegramBot;
         this.anthropic = args.anthropic;
         this.openai = args.openai;
         this.sendMenu = args.sendMenu;
@@ -59,7 +59,7 @@ class GhostwriterHandler {
         if (name === "ghostwriterfromtexttoaudio") {
             const userId = ctx.from.id;
             try {
-                this.bot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+                this.telegramBot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
             } catch {}
 
             this.messageHash[userId] = 0;
@@ -69,7 +69,7 @@ class GhostwriterHandler {
         if (name === "ghostwriteraudio") {
             const userId = ctx.from.id;
             try {
-                this.bot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+                this.telegramBot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
             } catch {}
 
             this.messageHash[userId] = 0;
@@ -82,7 +82,7 @@ class GhostwriterHandler {
         if (name === "ghostwriter") {
             const userId = ctx.from.id;
             try {
-                this.bot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+                this.telegramBot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
             } catch {}
 
             this.messageHash[userId] = 0;
@@ -91,7 +91,7 @@ class GhostwriterHandler {
         if (name === "ghostwriterfromtexttoaudio") {
             const userId = ctx.from.id;
             try {
-                this.bot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+                this.telegramBot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
             } catch {}
 
             this.messageHash[userId] = 0;
@@ -100,11 +100,117 @@ class GhostwriterHandler {
         if (name === "ghostwriteraudio") {
             const userId = ctx.from.id;
             try {
-                this.bot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+                this.telegramBot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
             } catch {}
 
             this.messageHash[userId] = 0;
             this.activeUsers.set(userId, "ghostwriteraudio");
+        }
+    }
+
+    /**
+     * @param {import ('discord.js').Interaction} interaction - Discord interaction
+     * @param {string} actionName - Action name
+     * @returns {Promise<void>}
+     */
+    async handleDiscordSlashCommand(interaction, actionName) {
+        console.log("Execution of discord slash command:", actionName);
+        const textInput = interaction.options.getString("input");
+
+        console.log("Text input:", textInput);
+
+        if (actionName === "ghostwriter") {
+            const userId = interaction.member.user.id;
+            this.messageHash[userId] = 0;
+            this.activeUsers.set(userId, "ghostwriter");
+
+            const context = {
+                from: {
+                    id: userId,
+                    first_name: interaction.member.user.username,
+                    last_name: "",
+                },
+                chat: {
+                    id: interaction.channel.id,
+                },
+                userId: userId,
+                reply: async message => {
+                    await interaction.deferReply();
+                    await interaction.editReply(message);
+                },
+            };
+
+            const aiRes = await this.rephraseTextMessage(context, textInput);
+
+            await interaction.reply(aiRes);
+
+            this.messageHash[userId] = 1;
+        }
+
+        if (actionName === "ghostwriterfromtexttoaudio") {
+            try {
+                const userId = interaction.member.user.id;
+                this.messageHash[userId] = 0;
+                this.activeUsers.set(userId, "ghostwriterfromtexttoaudio");
+
+                if (!interaction.replied && interaction.deferred) {
+                    try {
+                        await interaction.editReply("Processing...");
+                    } catch (error) {
+                        console.error("Error replying to interaction:", error);
+                    }
+                }
+
+                const context = {
+                    from: {
+                        id: userId,
+                        first_name: interaction.member.user.username,
+                        last_name: "",
+                    },
+                    chat: {
+                        id: interaction.channel.id,
+                    },
+                    userId: userId,
+                    reply: async message => {},
+                    /**
+                     * @param {string} tempFile
+                     */
+                    replyWithVoice: async tempFile => {
+                        try {
+                            const buffer = fs.readFileSync(tempFile.source);
+
+                            const attachment = new AttachmentBuilder(buffer, {
+                                name: "voice.mp3",
+                            });
+
+                            interaction.channel.send({
+                                files: [attachment],
+                            });
+                        } catch (error) {
+                            console.error("Error sending voice message:", error);
+                        }
+                    },
+                };
+
+                const aiRes = await this.rephraseTextMessage(context, textInput);
+
+                await this.textToSpeech(context, aiRes);
+                interaction.channel.send(aiRes);
+
+                this.messageHash[userId] = 1;
+            } catch (error) {
+                console.error("Error in ghostwriterfromtexttoaudio:", error);
+            }
+        }
+
+        if (actionName === "ghostwriteraudio") {
+            const userId = interaction.member.user.id;
+            this.messageHash[userId] = 0;
+            this.activeUsers.set(userId, "ghostwriteraudio");
+
+            if (interaction.deferred && !interaction.replied) {
+                await interaction.editReply("Not implemented in Discord yet");
+            }
         }
     }
 
@@ -218,6 +324,7 @@ class GhostwriterHandler {
             await ctx.replyWithVoice({
                 source: tempFile,
             });
+            // await ctx.replyWithVoice(attachment);
 
             // Clean up
             fs.unlinkSync(tempFile);
@@ -349,7 +456,11 @@ class GhostwriterHandler {
         } catch {}
 
         try {
-            let message = await this.rephraseTextMessage(ctx);
+            try {
+                await ctx.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+            } catch {}
+
+            let message = await this.rephraseTextMessage(ctx, ctx.message.text);
             console.log("Message:", message);
             await ctx.reply(message);
         } catch (error) {
@@ -368,7 +479,11 @@ class GhostwriterHandler {
         } catch {}
 
         try {
-            let message = await this.rephraseTextMessage(ctx);
+            try {
+                await ctx.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+            } catch {}
+
+            let message = await this.rephraseTextMessage(ctx, ctx.message.text);
             console.log("Message:", message);
             await this.textToSpeech(ctx, message);
         } catch (error) {
@@ -381,15 +496,12 @@ class GhostwriterHandler {
 
     /**
      * @param {import('telegraf').Context} ctx - Telegraf context
+     * @param {string} text - User text message
      * @returns {Promise<string>}
      * @description Handles the text message
      */
-    async rephraseTextMessage(ctx) {
-        try {
-            await ctx.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
-        } catch {}
-
-        const userText = ctx.message.text;
+    async rephraseTextMessage(ctx, text) {
+        const userText = text;
 
         saveHistory({
             userId: ctx.from.id,
