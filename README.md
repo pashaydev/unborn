@@ -1,6 +1,6 @@
 # Multi platform bot
 
-This project is a Bun.js application running telegram & discord bot in separate treads.
+This project is a Bun.js application running bot in telegram,discord,slack
 
 ## Installation
 
