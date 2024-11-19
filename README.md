@@ -34,6 +34,10 @@ This project is a Bun.js application running bot in telegram,discord,slack
     export DISCORD_APP_ID=your-discord-app-id
     export GCS_BUCKET_NAME=your-google-claude-storage-name
     export GCS_KEY_FILE=json-gcs-file
+    export SLACK_SIGNING_SECRET=your-slack-signing-secret
+    export SLACK_BOT_ID=your-slack-app-id
+    export SLACK_APP_TOKEN=your-slack-app-token
+    export SLACK_BOT_OAUTH_TOKEN=your-slack-ouath
     ```
 
 ## Usage
