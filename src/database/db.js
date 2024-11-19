@@ -54,13 +54,20 @@ export class DatabaseManager {
         }
     }
 
-    addRootUser() {
-        const db = this.getDatabase();
-        db.query("INSERT INTO users (user_id, username, access_level) VALUES (?, ?, ?)").run(
-            634587551,
-            "root",
-            1
-        );
+    async addRootUser() {
+        const db = await this.getDatabase();
+        const rootUser = db.prepare("SELECT * FROM users WHERE user_id = ?").get(634587551);
+
+        if (!rootUser) {
+            db.query("INSERT INTO users (user_id, username, access_level) VALUES (?, ?, ?)").run(
+                634587551,
+                "root",
+                1
+            );
+            console.log("Root user added.");
+        } else {
+            console.log("Root user already exists.");
+        }
     }
 
     async initialize() {
