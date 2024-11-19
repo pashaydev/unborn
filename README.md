@@ -64,4 +64,8 @@ npm test
 
 ```sh
 npm run docker:build
+
 ```
+
+## Screenshoots
+<img width="1512" alt="Screenshot 2024-11-20 at 00 35 20" src="https://github.com/user-attachments/assets/b2effce9-43ae-4bda-9f8b-d9502c5df77a">
