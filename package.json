@@ -15,6 +15,7 @@
     "dependencies": {
         "@anthropic-ai/sdk": "^0.32.1",
         "@google-cloud/storage": "^7.14.0",
+        "@slack/bolt": "^4.1.0",
         "crypto": "^1.0.1",
         "discord.js": "^14.16.3",
         "elysia": "^1.1.24",

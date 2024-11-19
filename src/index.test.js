@@ -387,3 +387,73 @@ test("Chess game", async () => {
         });
     });
 });
+
+test("Simulation multiple web worker connections", async () => {
+    const NUM_WORKERS = 100;
+
+    const workerPromise = workerId => {
+        return new Promise((resolve, reject) => {
+            // Create worker using Bun.Worker
+            const worker = new Worker(new URL("./test/worker.js", import.meta.url));
+
+            // Handle messages from worker
+            worker.addEventListener("message", event => {
+                console.log(`Main thread received:`, event.data);
+            });
+
+            // Handle errors
+            worker.addEventListener("error", error => {
+                console.error(`Worker ${workerId} error:`, error);
+                reject(error);
+            });
+
+            // Send a test message to worker
+            setTimeout(() => {
+                worker.postMessage({
+                    workerId,
+                    message: `Hello from main thread to worker ${workerId}`,
+                });
+
+                // Terminate worker after message is sent
+                setTimeout(() => {
+                    worker.terminate();
+                    resolve();
+                }, 1000);
+            }, 500);
+        });
+    };
+
+    // Create worker.js file content
+    const workerCode = `
+        self.addEventListener('message', (event) => {
+            const { workerId, message } = event.data;
+            
+            // Echo received message back
+            self.postMessage({
+                workerId,
+                message: \`Worker \${workerId} received: \${message}\`
+            });
+        });
+
+        // Send ready signal
+        self.postMessage({ message: 'Worker is ready' });
+    `;
+
+    // Write worker code to file
+    await Bun.write("src/test/worker.js", workerCode);
+
+    try {
+        // Create array of worker promises
+        const workers = Array.from({ length: NUM_WORKERS }, (_, i) => workerPromise(i + 1));
+
+        // Wait for all workers to complete
+        await Promise.all(workers);
+        console.log("All workers terminated successfully");
+
+        // Clean up worker file
+        await Bun.write("src/test/worker.js", "");
+    } catch (error) {
+        console.error("Error in worker operations:", error);
+        throw error;
+    }
+}, 10000); // Increased timeout to accommodate multiple workers

@@ -1,15 +1,33 @@
 import { Telegraf } from "telegraf";
 import { saveHistory } from "../database/db.js";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import { App } from "@slack/bolt";
 
 export default class RedditHandler {
     /**
-     * @param {Telegraf} telegramBot
-     * @param {string} redditApiUrl
-     * @param {string} userAgent
-     * @param {string} contentType
-     * @param {number} maxAttempts
+     * @type {App} slackBot
      */
+    slackBot;
+    /**
+     * @type {Object} args
+     */
+    args;
+    /**
+     * @type {Telegraf} args.telegramBot
+     */
+    telegramBot;
+    /**
+     * @type {Function} args.anthropic
+     */
+    anthropic;
+    /**
+     * @type {Function} args.sendMenu
+     */
+    sendMenu;
+    /**
+     * @type {Object} args.discordBot
+     */
+    discordBot;
     constructor(args) {
         this.telegramBot = args.telegramBot;
         this.anthropic = args.anthropic;
@@ -49,6 +67,156 @@ export default class RedditHandler {
     }
 
     /**
+     * @param {import('@slack/bolt').SlackCommandMiddlewareArgs} context - Slack
+     */
+    async handleSlackCommand(context) {
+        if (context?.command?.command === "/reddit") {
+            const blocks = [
+                {
+                    type: "section",
+                    text: {
+                        type: "mrkdwn",
+                        text: "Choose a category:",
+                    },
+                },
+                {
+                    type: "actions",
+                    elements: [
+                        {
+                            type: "button",
+                            text: {
+                                type: "plain_text",
+                                text: "Cute",
+                            },
+                            action_id: "reddit:cute",
+                        },
+                        {
+                            type: "button",
+                            text: {
+                                type: "plain_text",
+                                text: "TechMemes",
+                            },
+                            action_id: "reddit:tech-memes",
+                        },
+                    ],
+                },
+                {
+                    type: "actions",
+                    elements: [
+                        {
+                            type: "button",
+                            text: {
+                                type: "plain_text",
+                                text: "Art",
+                            },
+                            action_id: "reddit:art",
+                        },
+                        {
+                            type: "button",
+                            text: {
+                                type: "plain_text",
+                                text: "JustMemes",
+                            },
+                            action_id: "reddit:memes",
+                        },
+                    ],
+                },
+            ];
+
+            try {
+                // Send the message with buttons
+                await this.slackBot.client.chat.postMessage({
+                    channel: context.body.channel_id,
+                    blocks: blocks,
+                    text: "Choose a category", // Fallback text
+                });
+            } catch (error) {
+                console.error("Error handling Slack command:", error);
+            }
+        } else {
+            const parseCommand = context.action.action_id.replace("reddit:", "").trim();
+            const innerContext = {
+                from: {
+                    id: context.body.user.id,
+                },
+                reply: async message => {
+                    return await this.slackBot.client.chat.postMessage({
+                        channel: context.body.channel.id,
+                        text: message,
+                    });
+                },
+                replyWithVideo: async message => {
+                    return await this.slackBot.client.chat.postMessage({
+                        channel: context.body.channel.id,
+                        text: message,
+                    });
+                },
+                replyWithAnimation: async message => {
+                    return await this.slackBot.client.chat.postMessage({
+                        channel: context.body.channel.id,
+                        text: message,
+                    });
+                },
+            };
+            if (parseCommand === "cute") {
+                await this.handleInnerAction(innerContext, "cute.json");
+            } else if (parseCommand === "tech-memes") {
+                await this.handleInnerAction(innerContext, "ProgrammingHumor.json");
+            } else if (parseCommand === "art") {
+                await this.handleInnerAction(innerContext, "art.json");
+            } else if (parseCommand === "memes") {
+                await this.handleInnerAction(innerContext, "memes.json");
+            }
+        }
+    }
+
+    // Add this as a separate method to handle button clicks
+    async handleBlockActions({ body, ack, client }) {
+        await ack();
+        console.log("Button clicked", body);
+
+        const action = body.actions[0]; // Get the first action from the array
+        const buttonContext = {
+            from: {
+                id: body.user.id,
+            },
+            reply: async message => {
+                return await client.chat.postMessage({
+                    channel: body.channel.id,
+                    text: message,
+                });
+            },
+            replyWithVideo: async message => {
+                return await client.chat.postMessage({
+                    channel: body.channel.id,
+                    text: message,
+                });
+            },
+            replyWithAnimation: async message => {
+                return await client.chat.postMessage({
+                    channel: body.channel.id,
+                    text: message,
+                });
+            },
+        };
+
+        switch (action.action_id) {
+            case "reddit:cute":
+                await this.handleInnerAction(buttonContext, "cute.json");
+                break;
+            case "reddit:tech-memes":
+                await this.handleInnerAction(buttonContext, "ProgrammingHumor.json");
+                break;
+            case "reddit:art":
+                await this.handleInnerAction(buttonContext, "art.json");
+                break;
+            case "reddit:memes":
+                await this.handleInnerAction(buttonContext, "memes.json");
+                break;
+        }
+    }
+
+    /**
      * @param {import('telegraf').Context} ctx
      * @param {string} message
      * @returns {void}
@@ -74,7 +242,7 @@ export default class RedditHandler {
                             callback_data: "reddit:art",
                         },
                         {
-                            text: "NormisMemes",
+                            text: "JustMemes",
                             callback_data: "reddit:memes",
                         },
                     ],
@@ -104,7 +272,7 @@ export default class RedditHandler {
                 .setStyle(ButtonStyle.Secondary),
             new ButtonBuilder()
                 .setCustomId("reddit:memes")
-                .setLabel("NormisMemes")
+                .setLabel("JustMemes")
                 .setStyle(ButtonStyle.Secondary),
         ];
 

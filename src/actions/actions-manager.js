@@ -5,7 +5,7 @@ import RedditHandler from "./reddit.js";
 import ImagegenHandler from "./imagegen.js";
 import { message } from "telegraf/filters";
 import ScrapperHandler from "./scrapper.js";
-import { Events, REST, Routes, SlashCommandBuilder } from "discord.js";
+import { Events, Routes, SlashCommandBuilder } from "discord.js";
 
 class ActionManager {
     #implementedActions = [
@@ -20,19 +20,125 @@ class ActionManager {
     ];
 
     /**
-     * @param {import('telegraf').Telegraf} telegramBot
-     * @param {import('discord.js').Client} discordBot
-     * @param {function} sendMenu
-     * @param {import OpenAi from "openai";} openai
-     * @param {import Anthropic from "@anthropic-ai/sdk";} anthropic
-     * @param {object} userManager
+     * @type {import('telegraf').Telegraf}
      */
+    telegramBot;
+    /**
+     * @type {import('@slack/bolt').App}
+     */
+    slackBot;
+    /**
+     * @type {import('discord.js').Client}
+     */
+    discordBot;
+    /**
+     * @type {function}
+     */
+    sendMenu;
+    /**
+     * @type {import('openai').OpenAi}
+     */
+    openai;
+    /**
+     * @type {import('@anthropic-ai/sdk').Anthropic}
+     */
+    anthropic;
+    /**
+     * @type {object}
+     */
+    userManager;
+
     constructor(args) {
         for (let key in args) {
             this[key] = args[key];
         }
 
         this.actions = {};
+    }
+
+    async registerSlackCommands() {
+        for (let action of this.#implementedActions) {
+            try {
+                const actionInstance = this.createAction(action);
+                this.actions[action] = actionInstance;
+            } catch (error) {
+                console.error("Error creating action instance:", error);
+            }
+        }
+
+        console.log("Registering Slack commands...");
+
+        for (let action of this.#implementedActions) {
+            this.slackBot.command(`/${action}`, async context => {
+                const command = context.command.command.replace("/", "");
+                console.log("Slack Command:", command);
+                const actionInstance = this.getActionInstance(command);
+
+                if (actionInstance && actionInstance.handleSlackCommand) {
+                    await context.ack();
+                    actionInstance.slackBot = this.slackBot;
+                    await actionInstance.handleSlackCommand(context);
+                }
+            });
+        }
+
+        for (const action of ["reddit:cute", "reddit:tech-memes", "reddit:art", "reddit:memes"]) {
+            this.slackBot.action(action, async context => {
+                const command = context.action.action_id;
+                console.log("Slack Action:", command);
+                const actionInstance = this.getActionInstance("reddit");
+
+                if (actionInstance && actionInstance.handleSlackCommand) {
+                    await context.ack();
+                    actionInstance.slackBot = this.slackBot;
+                    await actionInstance.handleSlackCommand(context);
+                }
+            });
+        }
+
+        const chessHandler = this.getActionInstance("chess");
+        // Register action handlers
+        this.slackBot.action(/move_.+/, async args => {
+            await chessHandler.handleSlackAction(args);
+        });
+
+        this.slackBot.action(/page_.+/, async args => {
+            await chessHandler.handleSlackAction(args);
+        });
+
+        this.slackBot.action("resign", async args => {
+            await chessHandler.handleSlackAction(args);
+        });
+
+        this.slackBot.action("dummy_action", async args => {
+            await chessHandler.handleSlackAction(args);
+        });
+
+        this.slackBot.message(async ({ message, say }) => {
+            const userId = message.user;
+            const chatId = message.channel;
+
+            console.log("Slack Message:", message.text, "from:", userId, "chat:", chatId);
+            const user = this.userManager.getUser(chatId, userId);
+            const activeFunction = user?.activeFunction;
+            const once = user?.once;
+
+            if (activeFunction) {
+                const actionInstance = this.getActionInstance(activeFunction);
+                if (actionInstance && "handleSlackMessage" in actionInstance) {
+                    actionInstance.handleSlackMessage(message, say);
+                }
+
+                if (once) {
+                    this.userManager.updateInstance({
+                        chatId,
+                        userId,
+                        data: { activeFunction: null },
+                        ctx: message,
+                    });
+                }
+            }
+        });
     }
 
     async registerDiscordCommands() {
@@ -77,22 +183,26 @@ class ActionManager {
 
                 const { commandName } = interaction;
 
+                console.log("Discord Slash Command:", commandName);
+
                 if (this.#implementedActions.includes(commandName)) {
                     const actionInstance = this.getActionInstance(commandName);
-                    console.log("Discord Slash Command:", actionInstance);
 
                     try {
                         if (actionInstance && actionInstance.handleDiscordSlashCommand) {
                             await interaction.deferReply();
+
                             await actionInstance.handleDiscordSlashCommand(
                                 interaction,
                                 commandName
                             );
                         } else {
-                            await interaction.reply({
-                                content: "This command is not fully implemented yet!",
-                                ephemeral: true,
-                            });
+                            if (interaction.deferred && !interaction.replied) {
+                                await interaction.reply({
+                                    content: "This command is not fully implemented yet!",
+                                    ephemeral: true,
+                                });
+                            }
                         }
                     } catch (error) {
                         console.error("Error handling Discord Slash Command:", error);
@@ -195,6 +305,7 @@ class ActionManager {
 
             if (this.#implementedActions.includes(commandName)) {
                 console.log("Discord Slash Command:", commandName);
+
                 const actionInstance = this.getActionInstance(commandName);
 
                 if (actionInstance && actionInstance.handleDiscordSlashCommand) {
@@ -314,6 +425,7 @@ class ActionManager {
 
     createAction(actionName) {
         const args = {
+            slackBot: this.slackBot,
             telegramBot: this.telegramBot,
             discordBot: this.discordBot,
             anthropic: this.anthropic,

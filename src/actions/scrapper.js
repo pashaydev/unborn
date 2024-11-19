@@ -58,8 +58,57 @@ class ScrapperHandler {
         this.handleScrapper(ctx, actionName);
     }
     /**
+     * @param {import('@slack/bolt').SlackCommandMiddlewareArgs} context - Slack
+     */
+    handleSlackCommand(context) {
+        this.handleScrapper(
+            {
+                message: {
+                    text: context.body.text,
+                },
+                from: {
+                    id: context.body.user_id,
+                },
+
+                reply: async text => {
+                    try {
+                        await context.ack();
+                        await context.say(text);
+                    } catch (error) {
+                        console.error("Failed to reply to slack command:", error);
+                    }
+                },
+
+                replyWithHTML: async text => {
+                    try {
+                        await context.ack();
+                        const chunks = text.match(/[\s\S]{1,1000}/g) || [];
+                        for (const chunk of chunks) {
+                            await context.say({
+                                text: chunk,
+                                blocks: [
+                                    {
+                                        type: "section",
+                                        text: {
+                                            type: "mrkdwn",
+                                            text: chunk,
+                                        },
+                                    },
+                                ],
+                            });
+                        }
+                    } catch (error) {
+                        console.error("Failed to reply to slack command with HTML:", error);
+                    }
+                },
+            },
+            "markdown"
+        );
+    }
+
+    /**
      *
-     * @param {import("discord.js").Interaction} interaction
+     * @param {import("discord.js").CommandInteraction} interaction
      */
     async handleDiscordSlashCommand(interaction) {
         try {
@@ -85,16 +134,25 @@ class ScrapperHandler {
                         if (!interaction.deferred && !interaction.replied) {
                             await interaction.deferReply();
                         }
-                        await interaction.channel.send({
-                            content: text,
-                            allowedMentions: { parse: [] },
-                        });
+
+                        const chunks = text.match(/[\s\S]{1,2000}/g) || [];
+
+                        for (const chunk of chunks) {
+                            await interaction.channel.send({
+                                content: chunk,
+                                allowedMentions: { parse: [] },
+                            });
+                        }
+
+                        if (interaction.deferred) {
+                            await interaction.editReply("Done.");
+                        }
                     } catch (error) {
                         console.error("Failed to reply to discord interaction with HTML:", error);
                     }
                 },
             };
-            await this.handleScrapper(context, prompt);
+            await this.handleScrapper(context, "markdown");
         } catch (error) {
             console.error("Failed to handle discord slash command:", error);
         }
@@ -105,7 +163,7 @@ class ScrapperHandler {
      * @returns {Promise<void>}
      * @description Handles scrapper action
      */
-    async handleScrapper(ctx) {
+    async handleScrapper(ctx, outputFormat = "html") {
         ctx.reply("scrapping web...");
 
         const activeSearches = this.activeSearches.length;
@@ -155,21 +213,46 @@ class ScrapperHandler {
 
         console.log("Search Results: ", data);
 
-        let html = data.reduce((acc, curr) => {
-            return (
-                acc + `\n\n<b>${curr.title}</b>\n<pre>${curr.link}</pre>\n<i>${curr.snippet}</i>`
-            );
-        }, "");
+        let html = "";
+
+        if (outputFormat === "html") {
+            html = data.reduce((acc, curr) => {
+                return (
+                    acc +
+                    `
+                <div>
+                    <h3>${curr.title}</h3>
+                    <a href="${curr.link}">${curr.link}</a>
+                    <p>${curr.snippet}</p>
+                </div>
+            `
+                );
+            }, "");
+        } else {
+            // markdown
+            html = data.reduce((acc, curr) => {
+                return (
+                    acc +
+                    `
+                *${curr.title}*
+                [${curr.link}](${curr.link})
+                ${curr.snippet}
+            `
+                );
+            });
+        }
 
         try {
             // Get current html and structured data with antropic
             const completion = await this.openai.chat.completions.create({
-                model: "gpt-3.5-turbo",
+                model: "gpt-4o",
                 temperature: 0.5,
                 max_tokens: 3000,
                 messages: [
                     {
-                        content: `
+                        content:
+                            outputFormat === "html"
+                                ? `
                             You are tasked with generating a response based on the search results from a given query. The goal is to summarize the key information and insights from the search results in a clear and concise manner.
                             1. Review the search results and identify the most relevant and important information.
                             2. Summarize the key points and insights from the search results.
@@ -185,6 +268,17 @@ class ScrapperHandler {
                                 - <u> for underline text
                                 - <pre> for preformatted text
                                 Do not use any other tags.
+                            7. Attach links to the original sources of information under each point.
+                        `
+                                : `
+                            You are tasked with generating a response based on the search results from a given query. The goal is to summarize the key information and insights from the search results in a clear and concise manner.
+                            1. Review the search results and identify the most relevant and important information.
+                            2. Summarize the key points and insights from the search results.
+                            3. Provide a brief overview of the main topics and themes covered in the search results.
+                            3. Use simple, straightforward language that is easy to understand.
+                            4. Avoid repeating information or including unnecessary details.
+                            5. Keep the response concise and focused on the main points.
+                            6. Return the response in markdown format.
                             7. Attach links to the original sources of information under each point.
                         `,
                         role: "system",
@@ -208,31 +302,6 @@ class ScrapperHandler {
         }
 
         this.activeSearches = this.activeSearches.filter(id => id !== ctx.from.id);
-    }
-
-    /**
-     * @param {string} prompt
-     * @returns {Promise<SearchResult>}
-     */
-    async getScrapperData(prompt) {
-        try {
-            const url = `https://api.scraperapi.com/structured/google/search?api_key=${Bun.env.SCRAPPER_API_KEY}&query=${prompt}`;
-            console.log("Fetching scrapper data:", url);
-            /**
-             * @type {SearchResult}
-             */
-            const response = await fetch(url);
-
-            if (!response.ok) {
-                console.error("Failed to fetch scrapper data:", response.statusText);
-                return null;
-            }
-
-            return response.json();
-        } catch (error) {
-            console.error("Failed to fetch scrapper data:", error);
-            return null;
-        }
     }
 }
 

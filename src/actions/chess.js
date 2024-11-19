@@ -36,6 +36,10 @@ const RANKS = BOARD_CONFIG.RANKS;
 
 export default class ChessGameHandler {
     /**
+     * @type {import("@slack/bolt").App}
+     */
+    slackBot;
+    /**
      * @param {import('telegraf').Telegraf} bot
      * @param {import('discord.js').Client} discordBot
      * @param {Anthropic} anthropic
@@ -54,6 +58,144 @@ export default class ChessGameHandler {
     }
     initCommand(ctx, actionName) {
         this.startNewGame(ctx);
+    }
+
+    /**
+     * @param {import('@slack/bolt').SlackCommandMiddlewareArgs} context - Slack
+     */
+    async handleSlackCommand(context) {
+        const actionName = context.command.command;
+        if (actionName === "/chess") {
+            this.initAction(
+                {
+                    chat: { id: context.body.channel_id },
+                    from: { id: context.body.user_id },
+                    reply: async (message, keyboard) => {
+                        try {
+                            const convertedButtons = this.convertToSlackButton(keyboard || []);
+
+                            await this.slackBot.client.chat.postMessage({
+                                channel: context.body.channel_id,
+                                text: message,
+                                blocks: convertedButtons,
+                            });
+                        } catch (error) {
+                            console.error("Error sending reply:", error);
+                        }
+                    },
+                },
+                actionName
+            );
+        } else {
+        }
+    }
+
+    /**
+     * @param {import('@slack/bolt').SlackActionMiddlewareArgs} args - Slack action arguments
+     */
+    async handleSlackAction(args) {
+        const { action, body, ack, respond } = args;
+        await ack(); // Acknowledge the action immediately
+
+        // Create a context object that matches the format used in other platforms
+        const context = {
+            chat: { id: body.channel.id },
+            from: { id: body.user.id },
+            reply: async (message, keyboard) => {
+                try {
+                    const convertedButtons = this.convertToSlackButton(keyboard || []);
+                    await respond({
+                        text: message,
+                        blocks: convertedButtons,
+                        replace_original: false,
+                    });
+                } catch (error) {
+                    console.error("Error sending reply:", error);
+                }
+            },
+        };
+
+        const gameState = this.games.get(body.channel.id);
+        if (!gameState) {
+            await respond("No active game found. Start a new game with /chess");
+            return;
+        }
+
+        // Handle different action types
+        switch (action.action_id) {
+            case "resign":
+                this.games.delete(body.channel.id);
+                await respond({
+                    text: "Game over. You resigned.",
+                    blocks: [],
+                    replace_original: false,
+                });
+                break;
+
+            case "dummy_action":
+                // Do nothing for dummy actions
+                break;
+
+            default:
+                if (action.action_id.startsWith("move_")) {
+                    const move = action.action_id.replace("move_", "");
+                    await this.executeMove(gameState, move, context);
+                    await this.handleAIResponse(gameState, context);
+                } else if (action.action_id.startsWith("page_")) {
+                    const page = parseInt(action.action_id.split("_")[1]);
+                    const keyboard = this.getMoveKeyboard(gameState, page);
+                    await respond({
+                        blocks: this.convertToSlackButton(keyboard),
+                        replace_original: true,
+                    });
+                }
+                break;
+        }
+    }
+
+    convertToSlackButton(parent) {
+        const buttons = (
+            parent?.reply_markup?.inline_keyboard ||
+            parent?.inline_keyboard ||
+            []
+        ).flat();
+
+        if (!buttons.length) return [];
+
+        try {
+            const blocks = [
+                {
+                    type: "section",
+                    text: {
+                        type: "mrkdwn",
+                        text: "Choose your move:",
+                    },
+                },
+            ];
+
+            // Group buttons into sections of 5 (Slack's limit)
+            for (let i = 0; i < buttons.length; i += 5) {
+                const buttonGroup = buttons.slice(i, i + 5);
+                blocks.push({
+                    type: "actions",
+                    elements: buttonGroup.map(button => ({
+                        type: "button",
+                        text: {
+                            type: "plain_text",
+                            text: button.text,
+                            emoji: true,
+                        },
+                        value: button.callback_data,
+                        action_id: button.callback_data,
+                    })),
+                });
+            }
+
+            return blocks;
+        } catch (error) {
+            console.error("Error converting keyboard:", error);
+            return [];
+        }
     }
 
     convertToDiscordButton(buttons) {

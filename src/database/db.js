@@ -108,7 +108,7 @@ export class DatabaseManager {
             }
 
             // Add root user
-            this.addRootUser();
+            // this.addRootUser();
 
             console.log(`Database initialized successfully at ${this.dbPath}`);
             return this.db;
@@ -142,18 +142,15 @@ export const { SQL_QUERIES } = DatabaseManager;
 export const insertHistory = async ({ userInput, botResponse, userId }) => {
     // Get database instance
     const db = await databaseManager.getDatabase();
-
     // Use SQL queries
     db.query(SQL_QUERIES.INSERT_HISTORY).run(userId, userInput || "", botResponse || "");
-
-    console.log("Add new items to db", userInput, botResponse, userId);
+    console.log("History saved to database", { userInput, botResponse, userId });
 };
 
 export const addNewUser = async ({ userId, username }) => {
     const db = await databaseManager.getDatabase();
-    console.log("Add new user to db", userId, username, db);
     db.query("INSERT INTO users (user_id, username) VALUES (?, ?)").run(userId, username);
-    console.log("Add new user to db", userId, username);
+    console.log("New user added to database", { userId, username });
 };
 
 export const getHistory = async ({ userId }) => {

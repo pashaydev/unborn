@@ -25,6 +25,11 @@ const GHOSTWRITER_SYSTEM_MESSAGE = `
 
 class GhostwriterHandler {
     /**
+     * @type {import('@slack/bolt').App}
+     */
+    slackBot;
+
+    /**
      * @param {import('telegraf').Telegraf} bot - Telegraf instance
      * @param {import("@anthropic-ai/sdk").Anthropic} anthropic - Anthropic instance
      * @param {Function} sendMenu - Menu sending function
@@ -109,6 +114,120 @@ class GhostwriterHandler {
     }
 
     /**
+     * @param {import('@slack/bolt').SlackCommandMiddlewareArgs} context - Slack
+     */
+    async handleSlackCommand(context) {
+        const body = context.body;
+        console.log("Handling slack command:", this.slackBot);
+        const text = body.text;
+        const command = body.command.replace("/", "");
+        const userId = body.user_id;
+
+        if (command === "ghostwriter") {
+            this.messageHash[userId] = 0;
+            this.activeUsers.set(userId, "ghostwriter");
+
+            const innerContext = {
+                from: {
+                    id: userId,
+                    first_name: body.user_name,
+                    last_name: "",
+                },
+                chat: {
+                    id: body?.channel_id || "",
+                },
+                userId: userId,
+
+                reply: async message => {
+                    await context.ack({
+                        text: message,
+                    });
+                },
+            };
+
+            try {
+                const message = await this.rephraseTextMessage(innerContext, text);
+                await context.respond(message);
+            } catch (error) {
+                console.error("Error in ghostwriter:", error);
+            }
+
+            this.messageHash[userId] = 1;
+        }
+
+        if (command === "ghostwriterfromtexttoaudio") {
+            this.messageHash[userId] = 0;
+            this.activeUsers.set(userId, "ghostwriterfromtexttoaudio");
+
+            const innerContext = {
+                from: {
+                    id: userId,
+                    first_name: body.user_name,
+                    last_name: "",
+                },
+                chat: {
+                    id: body?.channel_id || "",
+                },
+                userId: userId,
+
+                reply: async message => {
+                    await context.respond(message);
+                },
+                /**
+                 * @param {string} tempFile
+                 */
+                replyWithVoice: async tempFile => {
+                    try {
+                        const buffer = fs.readFileSync(tempFile.source);
+
+                        const formData = new FormData();
+                        formData.append("channels", body.channel_id);
+                        formData.append("file", new Blob([buffer]), "voice.mp3");
+
+                        const response = await this.slackBot.client.files.uploadV2({
+                            channels: body.channel_id,
+                            file: buffer,
+                            filename: "voice.mp3",
+                        });
+
+                        console.log("Response:", response);
+
+                        // if (!response.ok) {
+                        //     console.error("Error sending voice message:", response.statusText);
+                        // }
+                    } catch (error) {
+                        console.error("Error sending voice message:", error);
+                    }
+                },
+            };
+
+            try {
+                this.rephraseTextMessage.bind(this);
+                const message = await this.rephraseTextMessage(innerContext, text);
+                await this.textToSpeech(innerContext, message);
+            } catch (error) {
+                console.error("Error in ghostwriterfromtexttoaudio:", error);
+            }
+
+            this.messageHash[userId] = 1;
+        }
+
+        if (command === "ghostwriteraudio") {
+            this.messageHash[userId] = 0;
+            this.activeUsers.set(userId, "ghostwriteraudio");
+
+            if (!context.replied && context.deferred) {
+                try {
+                    await context.ack({
+                        text: "Not implemented in Slack yet",
+                    });
+                } catch (error) {
+                    console.error("Error replying to interaction:", error);
+                }
+            }
+        }
+    }
+    /**
      * @param {import ('discord.js').Interaction} interaction - Discord interaction
      * @param {string} actionName - Action name
      * @returns {Promise<void>}
@@ -135,14 +254,25 @@ class GhostwriterHandler {
                 },
                 userId: userId,
                 reply: async message => {
-                    await interaction.deferReply();
-                    await interaction.editReply(message);
+                    try {
+                        await interaction.channel.send(message);
+                    } catch (error) {
+                        console.error("Error replying to interaction:", error);
+                    }
                 },
             };
 
             const aiRes = await this.rephraseTextMessage(context, textInput);
 
-            await interaction.reply(aiRes);
+            try {
+                if (!interaction.replied && interaction.deferred) {
+                    await interaction.editReply(aiRes);
+                } else {
+                    await interaction.reply(aiRes);
+                }
+            } catch (error) {
+                console.error("Error replying to interaction:", error);
+            }
 
             this.messageHash[userId] = 1;
         }

@@ -6,17 +6,17 @@ import fs from "fs";
 
 class DatabaseSaver {
     /**
-     * @param {Database}
+     * @type {DatabaseManager}
+     */
+    #dbManager;
+    /**
+     * @type {number} interval
      * @private
      */
-    #db;
+    #interval = 1000 * 60 * 15;
+    // #interval = 1000 * 60 * 60; // 1 hour
     /**
-     * @param {number} interval
-     * @private
-     */
-    #interval = 1000 * 60 * 60; // 1 hour
-    /**
-     * @param {string} id
+     * @type {string} id
      * @private
      */
     id;
@@ -27,20 +27,20 @@ class DatabaseSaver {
     #bucket;
 
     /**
-     * @param {number} rafId
+     * @type {number} rafId
      * @private
      */
     #rafId;
 
     /**
-     * @param {Database} db
+     * @param {DatabaseManager} dbManager
      */
-    constructor(db) {
+    constructor(dbManager) {
         this.#bucket = getBucket();
         this.id = new Date().toISOString().replace(/T/, ":").replace(/\..+/, "").replace(/:/g, ".");
         this.startSaving();
 
-        this.#db = db;
+        this.#dbManager = dbManager;
     }
     startSaving() {
         if (this.#rafId) {
@@ -83,12 +83,10 @@ class DatabaseSaver {
      * @description Restores the database from the latest backup in the bucket
      */
     static async restoreDatabase() {
+        console.log("Restoring database from GCS...");
+
         const dbPath = DatabaseManager.determineDbPath();
-        const tempFilePath = `/tmp/db-${new Date()
-            .toISOString()
-            .replace(/T/, ":")
-            .replace(/\..+/, "")
-            .replace(/:/g, ".")}.sqlite`;
+        const tempFilePath = `db.sqlite`;
 
         try {
             const bucket = getBucket();
@@ -100,7 +98,23 @@ class DatabaseSaver {
             });
 
             // Sort files by name in descending order to get the latest file
-            files.sort((a, b) => b.name.localeCompare(a.name));
+            files.sort((a, b) => {
+                const aParsedTime = a.name.match(
+                    /backups\/.*-(\d{4}-\d{2}-\d{2}\.\d{2}\.\d{2}\.\d{2})\.sqlite/
+                );
+                const bParsedTime = b.name.match(
+                    /backups\/.*-(\d{4}-\d{2}-\d{2}\.\d{2}\.\d{2}\.\d{2})\.sqlite/
+                );
+
+                if (!aParsedTime || !bParsedTime) {
+                    return 0;
+                }
+
+                const aTime = new Date(aParsedTime[1]);
+                const bTime = new Date(bParsedTime[1]);
+
+                return aTime > bTime ? -1 : aTime < bTime ? 1 : 0;
+            });
 
             if (files.length === 0) {
                 console.log("No backups found in GCS");
