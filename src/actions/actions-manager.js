@@ -49,15 +49,15 @@ class ActionManager {
     userManager;
 
     constructor(args) {
-        for (let key in args) {
+        for (const key in args) {
             this[key] = args[key];
         }
 
         this.actions = {};
     }
 
-    async registerSlackCommands() {
-        for (let action of this.#implementedActions) {
+    registerSlackCommands() {
+        for (const action of this.#implementedActions) {
             try {
                 const actionInstance = this.createAction(action);
                 this.actions[action] = actionInstance;
@@ -68,7 +68,7 @@ class ActionManager {
 
         console.log("Registering Slack commands...");
 
-        for (let action of this.#implementedActions) {
+        for (const action of this.#implementedActions) {
             this.slackBot.command(`/${action}`, async context => {
                 const command = context.command.command.replace("/", "");
                 console.log("Slack Command:", command);
@@ -114,7 +114,7 @@ class ActionManager {
             await chessHandler.handleSlackAction(args);
         });
 
-        this.slackBot.message(async ({ message, say }) => {
+        this.slackBot.message(({ message, say }) => {
             const userId = message.user;
             const chatId = message.channel;
 
@@ -142,7 +142,7 @@ class ActionManager {
     }
 
     async registerDiscordCommands() {
-        for (let action of this.#implementedActions) {
+        for (const action of this.#implementedActions) {
             try {
                 const actionInstance = this.createAction(action);
                 this.actions[action] = actionInstance;
@@ -169,12 +169,15 @@ class ActionManager {
         try {
             console.log(
                 "Started refreshing application (/) commands for App ID:",
-                Bun.env.DISCORD_APP_ID
+                Deno.env.get("DISCORD_APP_ID")
             );
 
-            await this.discordBot.rest.put(Routes.applicationCommands(Bun.env.DISCORD_APP_ID), {
-                body: commands,
-            });
+            await this.discordBot.rest.put(
+                Routes.applicationCommands(Deno.env.get("DISCORD_APP_ID")),
+                {
+                    body: commands,
+                }
+            );
 
             console.log("Successfully reloaded application (/) commands.");
 
@@ -224,9 +227,9 @@ class ActionManager {
         }
     }
 
-    async registerTelegramHandlers() {
+    registerTelegramHandlers() {
         // Register Telegram actions and commands
-        for (let action of this.#implementedActions) {
+        for (const action of this.#implementedActions) {
             const actionInstance = this.createAction(action);
 
             // Register Telegram action handlers
@@ -270,7 +273,7 @@ class ActionManager {
 
     registerDiscordHandlers() {
         // Update the existing message handler for legacy prefix commands
-        this.discordBot.on("messageCreate", async message => {
+        this.discordBot.on("messageCreate", message => {
             if (message.author.bot) return;
             if (!message.content.startsWith("!")) return;
 
@@ -332,7 +335,7 @@ class ActionManager {
 
     registerTelegramMessageHandlers() {
         // Text messages
-        this.telegramBot.on(message("text"), async ctx => {
+        this.telegramBot.on(message("text"), ctx => {
             const userId = ctx.from.id;
             const chatId = ctx.chat.id;
 
@@ -366,7 +369,7 @@ class ActionManager {
         });
 
         // Voice messages
-        this.telegramBot.on(message("voice"), async ctx => {
+        this.telegramBot.on(message("voice"), ctx => {
             const userId = ctx.from.id;
             const chatId = ctx.chat.id;
 
@@ -391,7 +394,7 @@ class ActionManager {
         });
 
         // Document messages
-        this.telegramBot.on(message("document"), async ctx => {
+        this.telegramBot.on(message("document"), ctx => {
             const userId = ctx.from.id;
             const chatId = ctx.chat.id;
 

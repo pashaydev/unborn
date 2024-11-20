@@ -1,6 +1,6 @@
-import { getBucket } from "../storage";
-import { DatabaseManager } from "./db";
-import fs from "fs";
+import { getBucket } from "../storage.js";
+import { DatabaseManager } from "./db.js";
+import fs from "node:fs";
 import cron from "node-cron";
 
 class DatabaseSaver {
@@ -54,7 +54,7 @@ class DatabaseSaver {
                 await fs.promises.writeFile(tempFilePath, buffer);
 
                 await this.#bucket.upload(tempFilePath, {
-                    destination: `backups/${Bun.env.NODE_ENV || "development"}-db-${
+                    destination: `backups/${Deno.env.get("NODE_ENV") || "development"}-db-${
                         this.id
                     }.sqlite`,
                 });
@@ -85,7 +85,7 @@ class DatabaseSaver {
 
             // Get the list of files in the backups folder
             const [files] = await bucket.getFiles({
-                prefix: `backups/${Bun.env.NODE_ENV || "development"}-db-`,
+                prefix: `backups/${Deno.env.get("NODE_ENV") || "development"}-db-`,
                 delimiter: "/",
             });
 

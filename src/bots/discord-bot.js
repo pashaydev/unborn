@@ -1,11 +1,11 @@
 import { Client, Events, GatewayIntentBits, Partials, REST } from "discord.js";
-import { parentPort } from "worker_threads";
-import ActionManager from "../actions/actions-manager";
+import { parentPort } from "node:worker_threads";
+import ActionManager from "../actions/actions-manager.js";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
-import UserManager from "../user-manager";
+import UserManager from "../user-manager.js";
 
-export default function startDiscordBot(config) {
+export const startDiscordBot = config => {
     const parsedConfig = config;
 
     const { DISCORD_BOT_TOKEN, ANTHROPIC_API_KEY, OPENAI_API_KEY } = parsedConfig;
@@ -51,4 +51,4 @@ export default function startDiscordBot(config) {
     });
 
     return discordBot;
-}
+};

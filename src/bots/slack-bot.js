@@ -1,9 +1,10 @@
-import { parentPort } from "worker_threads";
-import { App } from "@slack/bolt";
-import UserManager from "../user-manager";
-import ActionManager from "../actions/actions-manager";
+import { parentPort } from "node:worker_threads";
+import UserManager from "../user-manager.js";
+import ActionManager from "../actions/actions-manager.js";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
+import process from "node:process";
+import { App } from "@slack/bolt";
 
 export default async function startSlackBot(config) {
     try {
@@ -12,11 +13,11 @@ export default async function startSlackBot(config) {
         const { ANTHROPIC_API_KEY, OPENAI_API_KEY } = parsedConfig;
 
         const slackBot = new App({
-            botId: Bun.env.SLACK_BOT_ID,
-            token: Bun.env.SLACK_BOT_OAUTH_TOKEN,
-            signingSecret: Bun.env.SLACK_SIGNING_SECRET,
+            botId: Deno.env.get("SLACK_BOT_ID"),
+            token: Deno.env.get("SLACK_BOT_OAUTH_TOKEN"),
+            signingSecret: Deno.env.get("SLACK_SIGNING_SECRET"),
             socketMode: true,
-            appToken: Bun.env.SLACK_APP_TOKEN,
+            appToken: Deno.env.get("SLACK_APP_TOKEN"),
 
             customRoutes: [],
             retryConfig: {
@@ -46,7 +47,7 @@ export default async function startSlackBot(config) {
             sendMenu: () => {},
         });
 
-        await actionManager.registerSlackCommands();
+        actionManager.registerSlackCommands();
 
         // Start the app
         (async () => {
@@ -60,7 +61,7 @@ export default async function startSlackBot(config) {
         })();
 
         // Add error handler
-        slackBot.error(async error => {
+        slackBot.error(error => {
             console.error("Slack Error:", error);
         });
 

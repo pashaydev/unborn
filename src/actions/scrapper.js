@@ -46,10 +46,10 @@ class ScrapperHandler {
         this.searchEngine = new SearchEngine();
     }
 
-    initCommand(ctx, actionName) {
+    initCommand(ctx) {
         ctx.reply("Please provide a search query.");
     }
-    initAction(ctx, actionName) {
+    initAction(ctx) {
         ctx.reply("Please provide a search query.");
     }
     handleTextMessage(ctx, actionName) {
@@ -174,7 +174,7 @@ class ScrapperHandler {
 
         this.activeSearches.push(ctx.from.id);
 
-        let prompt = ctx.message.text;
+        const prompt = ctx.message.text;
 
         if (!prompt) {
             return ctx.reply("No search query provided.");

@@ -1,0 +1,7 @@
+{
+    "imports": {
+        "npm:": "https://cdn.skypack.dev/",
+        "worker_threads": "https://deno.land/std/node/worker_threads.ts",
+        "@/": "./src/"
+    }
+}

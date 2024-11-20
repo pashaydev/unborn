@@ -1,6 +1,7 @@
-import { Database } from "bun:sqlite";
-import fs from "fs";
-import DatabaseSaver from "./db-saver";
+import { DB } from "https://deno.land/x/sqlite/mod.ts";
+
+import fs from "node:fs";
+import DatabaseSaver from "./db-saver.js";
 
 export class DatabaseManager {
     static SQL_QUERIES = {
@@ -38,14 +39,14 @@ export class DatabaseManager {
             development: "db.sqlite",
         };
 
-        return pathMap[Bun.env.NODE_ENV] || "db.sqlite";
+        return pathMap[Deno.env.get("NODE_ENV")] || "db.sqlite";
     }
 
     static determineDbDir() {
-        if (Bun.env.NODE_ENV === "production") {
+        if (Deno.env.get("NODE_ENV") === "production") {
             return "/data";
         }
-        return Bun.env.NODE_ENV ? "" : "./data";
+        return Deno.env.get("NODE_ENV") ? "" : "./data";
     }
 
     ensureDirectoryExists() {
@@ -60,35 +61,34 @@ export class DatabaseManager {
 
             console.log("Initializing database...", this.dbPath);
 
-            if (Bun.env.NODE_ENV !== "test") {
+            if (Deno.env.get("NODE_ENV") !== "test") {
                 // Restore database from Google Cloud Storage
                 await DatabaseSaver.restoreDatabase();
             }
 
-            this.db = new Database(this.dbPath, {
+            this.db = new DB(this.dbPath, {
                 verbose: console.log,
                 readwrite: true,
                 create: true,
             });
 
             // Check if history table exists
-            const tableExists = this.db
-                .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='history'")
-                .get();
+            const tableExists = this.db.query(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='history'"
+            );
 
             if (!tableExists) {
                 // Create the table
-                this.db.exec(SQL_QUERIES.CREATE_HISTORY_TABLE);
+                this.db.execute(SQL_QUERIES.CREATE_HISTORY_TABLE);
             }
 
             // Check if users table exists
-            const usersTableExists = this.db
-                .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
-                .get();
-
+            const usersTableExists = this.db.query(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
+            );
             if (!usersTableExists) {
                 // Create the table
-                this.db.exec(SQL_QUERIES.CREATE_USER_TABLE);
+                this.db.execute(SQL_QUERIES.CREATE_USER_TABLE);
             }
 
             console.log(`Database initialized successfully at ${this.dbPath}`);
@@ -124,13 +124,17 @@ export const insertHistory = async ({ userInput, botResponse, userId }) => {
     // Get database instance
     const db = await databaseManager.getDatabase();
     // Use SQL queries
-    db.query(SQL_QUERIES.INSERT_HISTORY).run(userId, userInput || "", botResponse || "");
+    db.query(SQL_QUERIES.INSERT_HISTORY, {
+        userId,
+        userInput: userInput || "",
+        botResponse: botResponse || "",
+    });
     console.log("History saved to database", { userInput, botResponse, userId });
 };
 
 export const addNewUser = async ({ userId, username }) => {
     const db = await databaseManager.getDatabase();
-    db.query("INSERT INTO users (user_id, username) VALUES (?, ?)").run(userId, username);
+    db.query("INSERT INTO users (user_id, username) VALUES (?, ?)", { userId, username });
     console.log("New user added to database", { userId, username });
 };
 

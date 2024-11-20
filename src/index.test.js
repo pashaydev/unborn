@@ -63,7 +63,7 @@ test("Record from db should be deleted", async () => {
 });
 
 test("Reddit API should return a valid response", async () => {
-    const url = Bun.env.REDDIT_API_URL + "ProgrammerHumor.json";
+    const url = Deno.env.get("REDDIT_API_URL") + "ProgrammerHumor.json";
 
     let attempts = 0;
     let response;
@@ -78,7 +78,7 @@ test("Reddit API should return a valid response", async () => {
 
 test("Telegram Bot should have valid token", async () => {
     // Create bot instance with mocked methods
-    const bot = new Telegraf(Bun.env.TELEGRAM_BOT_TOKEN);
+    const bot = new Telegraf(Deno.env.get("TELEGRAM_BOT_TOKEN"));
     expect(bot.token).toBeTruthy();
     bot.drop();
 });
@@ -89,18 +89,18 @@ test("Discord Bot should have valid token", async () => {
         partials: [Partials.Channel],
     });
 
-    bot.login(Bun.env.DISCORD_BOT_TOKEN);
+    bot.login(Deno.env.get("DISCORD_BOT_TOKEN"));
     expect(bot.token).toBeTruthy();
     bot.destroy();
 });
 
 test("Slack Bot should have valid token", async () => {
     const slackBot = new App({
-        botId: Bun.env.SLACK_BOT_ID,
-        token: Bun.env.SLACK_BOT_OAUTH_TOKEN,
-        signingSecret: Bun.env.SLACK_SIGNING_SECRET,
+        botId: Deno.env.get("SLACK_BOT_ID"),
+        token: Deno.env.get("SLACK_BOT_OAUTH_TOKEN"),
+        signingSecret: Deno.env.get("SLACK_SIGNING_SECRET"),
         socketMode: true,
-        appToken: Bun.env.SLACK_APP_TOKEN,
+        appToken: Deno.env.get("SLACK_APP_TOKEN"),
 
         customRoutes: [],
         retryConfig: {
@@ -125,7 +125,7 @@ test("Slack Bot should have valid token", async () => {
 
 test("Antropic API response correctly", async () => {
     const anthropic = new Anthropic({
-        apiKey: Bun.env.ANTHROPIC_API_KEY,
+        apiKey: Deno.env.get("ANTHROPIC_API_KEY"),
     });
 
     const response = await anthropic.messages.create({
@@ -144,7 +144,7 @@ test("Antropic API response correctly", async () => {
 });
 
 test("OpenAI API response correctly", async () => {
-    const openai = new OpenAI({ apiKey: Bun.env.OPENAI_API_KEY });
+    const openai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY") });
     const completion = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [

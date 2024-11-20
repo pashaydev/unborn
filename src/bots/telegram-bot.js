@@ -1,19 +1,13 @@
 import { Telegraf } from "telegraf";
 import ActionManager from "../actions/actions-manager.js";
-import { parentPort } from "worker_threads";
+import { parentPort } from "node:worker_threads";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import UserManager from "../user-manager.js";
 
 export default function startTelegramBot(config) {
     const parsedConfig = config;
-    const {
-        TELEGRAM_BOT_TOKEN,
-        ANTHROPIC_API_KEY,
-        SECRET_PATH,
-        OPENAI_API_KEY,
-        TELEGRAM_WEBHOOK_URL,
-    } = parsedConfig;
+    const { TELEGRAM_BOT_TOKEN, ANTHROPIC_API_KEY, OPENAI_API_KEY } = parsedConfig;
 
     const anthropic = new Anthropic({
         apiKey: ANTHROPIC_API_KEY,
@@ -60,33 +54,13 @@ export default function startTelegramBot(config) {
     const telegramBot = new Telegraf(TELEGRAM_BOT_TOKEN, {
         telegram: { webhookReply: true },
     });
-    const actionManager = new ActionManager({
+    new ActionManager({
         telegramBot,
         openai,
         anthropic,
         userManager,
         sendMenu,
     });
-
-    const setupWebhook = async () => {
-        try {
-            await telegramBot.telegram.deleteWebhook();
-            const webhookUrl = `${TELEGRAM_WEBHOOK_URL}/webhook/${SECRET_PATH}`;
-            await telegramBot.telegram.setWebhook(webhookUrl, {
-                allowed_updates: ["message", "callback_query"],
-            });
-            console.log("Webhook set successfully!");
-            console.log(`Webhook URL: ${webhookUrl}`);
-
-            const webhookInfo = await telegramBot.telegram.getWebhookInfo();
-            console.log("Webhook Info:", webhookInfo);
-
-            return webhookUrl;
-        } catch (error) {
-            console.error("Error setting webhook:", error);
-        }
-        return "";
-    };
 
     const initializeBotHandlers = async () => {
         // Register commands
@@ -111,7 +85,7 @@ export default function startTelegramBot(config) {
             },
         ]);
 
-        telegramBot.command("start", async ctx => {
+        telegramBot.command("start", ctx => {
             sendMenu(ctx, "Choose options bellow.");
         });
 
@@ -136,7 +110,7 @@ export default function startTelegramBot(config) {
             userManager,
         });
 
-        await actionManager.registerTelegramHandlers();
+        actionManager.registerTelegramHandlers();
 
         console.log("Bot handlers have been initialized successfully!");
 

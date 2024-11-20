@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { saveHistory } from "../database/db.js"; // Added .js extension
 import { parseOfficeAsync } from "officeparser";
 import * as pdfjsLib from "pdfjs-dist";
@@ -31,7 +32,7 @@ export default class DockAsker {
             // this.setupMessageHandlers();
         }
     }
-    async handleDiscordSlashCommand(interaction, actionName) {
+    async handleDiscordSlashCommand(interaction) {
         try {
             const userId = interaction.user.id;
             this.activeUsers.add(userId);
@@ -88,17 +89,6 @@ export default class DockAsker {
             console.error("Error:", error);
         }
     }
-
-    /**
-     * @param {import('discord.js').Attachment} ctx - Discord message object
-     */
-    parseDiscordFile(attachment) {}
-
-    // setupMessageHandlers() {
-    //     // Using one-time handlers to prevent multiple registrations
-    //     this.telegramBot.on(message("document"), ctx => this.handleDocumentMessage(ctx), { once: true });
-    //     this.telegramBot.on(message("text"), ctx => this.handleTextMessage(ctx), { once: true });
-    // }
 
     async handleDocumentMessage(ctx) {
         const fileType = ctx.message.document.mime_type;

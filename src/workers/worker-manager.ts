@@ -1,13 +1,18 @@
 class WorkerManager {
-    private worker: Worker;
+    private worker!: Worker;
     private workerPath: string;
-    private config: any;
+    private config: Record<string, any>;
     private maxRetries: number;
     private retryDelay: number;
     private retryCount: number;
     private isRunning: boolean;
 
-    constructor(workerPath: string, config: any, maxRetries = 5, retryDelay = 5000) {
+    constructor(
+        workerPath: string,
+        config: Record<string, any>,
+        maxRetries = 5,
+        retryDelay = 5000
+    ) {
         this.workerPath = workerPath;
         this.config = config;
         this.maxRetries = maxRetries;
@@ -18,40 +23,36 @@ class WorkerManager {
     }
 
     private initializeWorker() {
-        this.worker = new Worker(this.workerPath);
+        const workerUrl = new URL(this.workerPath, import.meta.url).href;
+
+        this.worker = new Worker(workerUrl, {
+            type: "module",
+        });
+
         this.setupEventHandlers();
         this.startWorker();
     }
 
     private setupEventHandlers() {
-        this.worker.onmessage = event => {
-            console.log(event.data);
-            // Reset retry count on successful message
+        this.worker.onmessage = (event: MessageEvent) => {
+            console.log("Worker message:", event.data);
             this.retryCount = 0;
         };
 
-        this.worker.onerror = error => {
-            console.error(`Worker error: ${error}`);
+        this.worker.onerror = (error: ErrorEvent) => {
+            console.error("Worker error:", error.message);
             this.handleWorkerFailure();
         };
-
-        this.worker.addEventListener("exit", event => {
-            if (this.isRunning) {
-                console.log(`Worker exited unexpectedly`);
-                this.handleWorkerFailure();
-            }
-        });
     }
 
-    private handleWorkerFailure() {
+    private async handleWorkerFailure() {
         if (this.retryCount < this.maxRetries) {
             this.retryCount++;
             console.log(
                 `Attempting to restart worker (attempt ${this.retryCount}/${this.maxRetries})`
             );
-            setTimeout(() => {
-                this.restartWorker();
-            }, this.retryDelay);
+            await new Promise(resolve => setTimeout(resolve, this.retryDelay));
+            this.restartWorker();
         } else {
             console.error(`Worker failed after ${this.maxRetries} retry attempts`);
         }
@@ -59,12 +60,17 @@ class WorkerManager {
 
     private startWorker() {
         this.isRunning = true;
-        this.worker.postMessage(this.config);
+        try {
+            this.worker.postMessage(this.config);
+        } catch (error) {
+            console.error("Error starting worker:", error);
+            this.handleWorkerFailure();
+        }
     }
 
-    private restartWorker() {
+    private async restartWorker() {
         try {
-            this.worker.terminate();
+            await this.worker.terminate();
         } catch (error) {
             console.error("Error terminating worker:", error);
         }
@@ -72,6 +78,11 @@ class WorkerManager {
     }
 
     public postMessage(message: any) {
+        if (!this.isRunning) {
+            console.error("Worker is not running");
+            return;
+        }
+
         try {
             this.worker.postMessage(message);
         } catch (error) {
@@ -80,9 +91,13 @@ class WorkerManager {
         }
     }
 
-    public terminate() {
+    public async terminate() {
         this.isRunning = false;
-        this.worker.terminate();
+        try {
+            await this.worker.terminate();
+        } catch (error) {
+            console.error("Error terminating worker:", error);
+        }
     }
 }
 

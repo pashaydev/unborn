@@ -1,7 +1,9 @@
-const { join } = require("path");
-const { existsSync, mkdirSync } = require("fs");
+import process from "node:process";
+import { join } from "node:path";
+import { existsSync, mkdirSync } from "node:fs";
 
 const cacheDir = join(process.cwd(), ".cache", "puppeteer");
+
 if (!existsSync(cacheDir)) {
     mkdirSync(cacheDir, { recursive: true });
 }
@@ -16,7 +18,7 @@ module.exports = {
     },
     // Set cache directory relative to project root
     cacheDirectory: cacheDir,
-    executablePath: Bun.env.CHROME_BIN || null,
+    executablePath: Deno.env.get("CHROME_BIN") || null,
     // Add additional browser launch arguments if needed
     browserLaunchArgs: [
         "--no-sandbox",

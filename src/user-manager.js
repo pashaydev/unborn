@@ -1,4 +1,4 @@
-import { addNewUser } from "./database/db";
+import { addNewUser } from "./database/db.js";
 
 class UserManager {
     /**

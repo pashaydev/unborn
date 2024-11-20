@@ -1,6 +1,7 @@
+// deno-lint-ignore-file no-empty
 import { AttachmentBuilder } from "discord.js";
 import { saveHistory } from "../database/db.js";
-import fs from "fs";
+import { Buffer } from "node:buffer";
 
 export default class ImagegenHandler {
     /**
@@ -61,7 +62,7 @@ export default class ImagegenHandler {
                     }
 
                     // Create a readable stream from the buffer
-                    const stream = require("stream");
+                    const stream = await import("node:stream");
                     const readableStream = new stream.Readable();
                     readableStream.push(buffer);
                     readableStream.push(null);
@@ -87,7 +88,7 @@ export default class ImagegenHandler {
         this.activeUsers.delete(userId);
     }
 
-    async handleDiscordSlashCommand(interaction, actionName) {
+    async handleDiscordSlashCommand(interaction) {
         const userId = interaction.user.id;
         this.activeUsers.add(userId);
         const inputText = interaction.options.getString("input");
@@ -199,7 +200,7 @@ export default class ImagegenHandler {
                 headers: {
                     "Content-Type": "application/json",
                     Accept: "application/json",
-                    Authorization: `Bearer ${process.env.STABLE_DIFFUSION_API_KEY}`,
+                    Authorization: `Bearer ${Deno.env.get("STABLE_DIFFUSION_API_KEY")}`,
                 },
                 body: JSON.stringify(payload),
             });

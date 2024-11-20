@@ -1,5 +1,4 @@
 import { Markup } from "telegraf";
-import Anthropic from "@anthropic-ai/sdk";
 import { saveHistory } from "../database/db.js";
 import { ActionRowBuilder, ButtonBuilder } from "@discordjs/builders";
 import { ButtonStyle } from "discord.js";
@@ -42,7 +41,7 @@ export default class ChessGameHandler {
     /**
      * @param {import('telegraf').Telegraf} bot
      * @param {import('discord.js').Client} discordBot
-     * @param {Anthropic} anthropic
+     * @param {import('@anthropic-ai/sdk').Anthropic} anthropic
      * @param {Function} sendMenu
      */
     constructor(args) {
@@ -53,17 +52,17 @@ export default class ChessGameHandler {
         this.games = new Map();
     }
 
-    initAction(ctx, actionName) {
+    initAction(ctx) {
         this.startNewGame(ctx);
     }
-    initCommand(ctx, actionName) {
+    initCommand(ctx) {
         this.startNewGame(ctx);
     }
 
     /**
      * @param {import('@slack/bolt').SlackCommandMiddlewareArgs} context - Slack
      */
-    async handleSlackCommand(context) {
+    handleSlackCommand(context) {
         const actionName = context.command.command;
         if (actionName === "/chess") {
             this.initAction(
@@ -86,7 +85,6 @@ export default class ChessGameHandler {
                 },
                 actionName
             );
-        } else {
         }
     }
 
@@ -253,7 +251,7 @@ export default class ChessGameHandler {
      * @param {import('discord.js').CommandInteraction} ctx
      * @param {string} actionName
      */
-    async handleDiscordSlashCommand(interaction, actionName) {
+    async handleDiscordSlashCommand(interaction) {
         try {
             // Create context for the game
             const context = {
@@ -451,20 +449,19 @@ export default class ChessGameHandler {
         return Object.values(BOARD_CONFIG.PIECES.BLACK).includes(piece);
     }
 
-    getSquareFromNotation(notation, color) {
+    getSquareFromNotation(notation) {
         const [file, rank] = notation.split("");
         const fileIndex = FILES.indexOf(file.toLowerCase());
         const rankIndex = RANKS.indexOf(rank);
         return [7 - rankIndex, fileIndex]; // Same transformation for both colors
     }
 
-    getNotationFromSquare(rank, file, color) {
+    getNotationFromSquare(rank, file) {
         return `${FILES[file]}${RANKS[7 - rank]}`; // Same transformation for both colors
     }
 
     renderBoard(board, lastMove = null) {
         const files = BOARD_CONFIG.FILES;
-        const ranks = BOARD_CONFIG.RANKS;
 
         let ascii = "  +---------------------+\n";
         ascii += `   ${files.split("").join("   ")}\n`;
@@ -500,7 +497,7 @@ export default class ChessGameHandler {
         return "```\n" + ascii + "```";
     }
 
-    async makeMove(gameState, move) {
+    makeMove(gameState, move) {
         const [fromFile, fromRank, toFile, toRank] = move.split("");
         const currentColor = gameState.isPlayerTurn ? gameState.playerColor : gameState.aiColor;
         const [fromY, fromX] = this.getSquareFromNotation(fromFile + fromRank, currentColor);

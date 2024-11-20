@@ -4,10 +4,9 @@
     "main": "index.js",
     "type": "module",
     "scripts": {
-        "start": "bun ./src/index.js",
-        "dev": "bun --inspect ./src/index.js",
+        "start": "deno run --allow-read --allow-env --allow-net --allow-sys --unstable-worker-options --import-map=import_map.json src/index.js",
         "docker:build": "docker build -t unborn . && docker run -p 49160:8080 -d unborn",
-        "test": "bun test"
+        "test": "deno test"
     },
     "author": "PashaYakubovsky",
     "license": "ISC",
@@ -18,7 +17,6 @@
         "@slack/bolt": "^4.1.0",
         "crypto": "^1.0.1",
         "discord.js": "^14.16.3",
-        "elysia": "^1.1.24",
         "node-cron": "^3.0.3",
         "officeparser": "^5.0.0",
         "openai": "^4.71.1",
@@ -27,7 +25,16 @@
         "sqlite3": "^5.1.7",
         "telegraf": "^4.16.3"
     },
-    "devDependencies": {
-        "@types/bun": "^1.1.13"
+    "compilerOptions": {
+        "allowJs": true,
+        "lib": [
+            "deno.window",
+            "deno.worker"
+        ],
+        "strict": true
+    },
+    "importMap": "import_map.json",
+    "tasks": {
+        "start": "deno run --allow-net --allow-read --allow-worker src/index.js"
     }
 }

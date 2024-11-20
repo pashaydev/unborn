@@ -1,8 +1,9 @@
+// deno-lint-ignore-file no-empty
 import { saveHistory } from "../database/db.js";
-import fs from "fs";
-import os from "os";
+import fs from "node:fs";
+import os from "node:os";
 import fetch from "node-fetch";
-import path from "path";
+import path from "node:path";
 import { AttachmentBuilder } from "discord.js";
 
 const GHOSTWRITER_SYSTEM_MESSAGE = `
@@ -301,11 +302,11 @@ class GhostwriterHandler {
                         id: interaction.channel.id,
                     },
                     userId: userId,
-                    reply: async message => {},
+                    reply: async () => {},
                     /**
                      * @param {string} tempFile
                      */
-                    replyWithVoice: async tempFile => {
+                    replyWithVoice: tempFile => {
                         try {
                             const buffer = fs.readFileSync(tempFile.source);
 
@@ -590,7 +591,7 @@ class GhostwriterHandler {
                 await ctx.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
             } catch {}
 
-            let message = await this.rephraseTextMessage(ctx, ctx.message.text);
+            const message = await this.rephraseTextMessage(ctx, ctx.message.text);
             console.log("Message:", message);
             await ctx.reply(message);
         } catch (error) {
@@ -613,7 +614,7 @@ class GhostwriterHandler {
                 await ctx.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
             } catch {}
 
-            let message = await this.rephraseTextMessage(ctx, ctx.message.text);
+            const message = await this.rephraseTextMessage(ctx, ctx.message.text);
             console.log("Message:", message);
             await this.textToSpeech(ctx, message);
         } catch (error) {

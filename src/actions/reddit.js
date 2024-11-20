@@ -1,11 +1,9 @@
-import { Telegraf } from "telegraf";
 import { saveHistory } from "../database/db.js";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
-import { App } from "@slack/bolt";
 
 export default class RedditHandler {
     /**
-     * @type {App} slackBot
+     * @type {import("@slack/bolt").App} slackBot
      */
     slackBot;
     /**
@@ -13,7 +11,7 @@ export default class RedditHandler {
      */
     args;
     /**
-     * @type {Telegraf} args.telegramBot
+     * @type {import("telegraf").Telegraf} args.telegramBot
      */
     telegramBot;
     /**
@@ -35,7 +33,7 @@ export default class RedditHandler {
         this.discordBot = args.discordBot;
 
         this.maxAttempts = 5;
-        this.redditApiUrl = Bun.env.REDDIT_API_URL;
+        this.redditApiUrl = Deno.env.get("REDDIT_API_URL");
         this.responseHash = [];
 
         this.userAgent = "Mozilla/5.0";
