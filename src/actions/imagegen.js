@@ -1,5 +1,6 @@
 import { AttachmentBuilder } from "discord.js";
 import { saveHistory } from "../database/db.js";
+import fs from "fs";
 
 export default class ImagegenHandler {
     /**
@@ -14,11 +15,76 @@ export default class ImagegenHandler {
         this.userInteractions = {};
     }
 
-    initAction(ctx, action) {
+    initAction(ctx) {
         this.handleInitAction(ctx);
     }
-    initCommand(ctx, action) {
+    initCommand(ctx) {
         this.handleInitAction(ctx);
+    }
+
+    /**
+     * @param {import('@slack/bolt').SlackCommandMiddlewareArgs} context - Slack
+     */
+    async handleSlackCommand(context) {
+        const body = context.body;
+        console.log("Handling slack command:", this.slackBot);
+        const text = body.text;
+        const userId = body.user_id;
+
+        this.activeUsers.add(userId);
+
+        const innerContext = {
+            from: {
+                id: userId,
+                first_name: body.user_name,
+                last_name: "",
+            },
+            chat: {
+                id: body?.channel_id || "",
+            },
+            userId: userId,
+            reply: async message => {
+                await context.ack({
+                    text: message,
+                });
+            },
+            replyWithPhoto: async image => {
+                try {
+                    console.log(image, "Slack image");
+
+                    let buffer;
+                    if (typeof image.source === "string" && image.source.includes("base64")) {
+                        const base64Data = image.source.split(";base64,").pop();
+                        buffer = Buffer.from(base64Data, "base64");
+                    } else {
+                        buffer = Buffer.from(image.source, "base64");
+                    }
+
+                    // Create a readable stream from the buffer
+                    const stream = require("stream");
+                    const readableStream = new stream.Readable();
+                    readableStream.push(buffer);
+                    readableStream.push(null);
+
+                    await this.slackBot.client.files.uploadV2({
+                        channel_id: body.channel_id,
+                        file: readableStream,
+                        filename: "img.png",
+                    });
+                } catch (error) {
+                    console.error("Error message:", error.message);
+                    console.error("Full error:", error);
+                }
+            },
+        };
+
+        try {
+            await this.handleGenerateImage(innerContext, text);
+        } catch (error) {
+            console.error("Error in ghostwriter:", error);
+        }
+
+        this.activeUsers.delete(userId);
     }
 
     async handleDiscordSlashCommand(interaction, actionName) {

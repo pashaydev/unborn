@@ -9,6 +9,7 @@ import ChessGameHandler, { BOARD_CONFIG } from "./actions/chess.js";
 import { Database } from "bun:sqlite";
 import puppeteer from "puppeteer";
 import { Client, GatewayIntentBits, Partials } from "discord.js";
+import { App } from "@slack/bolt";
 
 const record = {
     userId: 10,
@@ -91,6 +92,35 @@ test("Discord Bot should have valid token", async () => {
     bot.login(Bun.env.DISCORD_BOT_TOKEN);
     expect(bot.token).toBeTruthy();
     bot.destroy();
+});
+
+test("Slack Bot should have valid token", async () => {
+    const slackBot = new App({
+        botId: Bun.env.SLACK_BOT_ID,
+        token: Bun.env.SLACK_BOT_OAUTH_TOKEN,
+        signingSecret: Bun.env.SLACK_SIGNING_SECRET,
+        socketMode: true,
+        appToken: Bun.env.SLACK_APP_TOKEN,
+
+        customRoutes: [],
+        retryConfig: {
+            retries: 2,
+            factor: 2,
+            randomize: true,
+        },
+
+        developerMode: true,
+    });
+
+    // Start the app
+    (async () => {
+        try {
+            await slackBot.start();
+            expect(slackBot.client.token).toBeTruthy();
+        } catch (error) {
+            console.error("Failed to start Slack app:", error);
+        }
+    })();
 });
 
 test("Antropic API response correctly", async () => {

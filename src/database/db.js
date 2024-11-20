@@ -54,22 +54,6 @@ export class DatabaseManager {
         }
     }
 
-    async addRootUser() {
-        const db = await this.getDatabase();
-        const rootUser = db.prepare("SELECT * FROM users WHERE user_id = ?").get(634587551);
-
-        if (!rootUser) {
-            db.query("INSERT INTO users (user_id, username, access_level) VALUES (?, ?, ?)").run(
-                634587551,
-                "root",
-                1
-            );
-            console.log("Root user added.");
-        } else {
-            console.log("Root user already exists.");
-        }
-    }
-
     async initialize() {
         try {
             this.ensureDirectoryExists();
@@ -106,9 +90,6 @@ export class DatabaseManager {
                 // Create the table
                 this.db.exec(SQL_QUERIES.CREATE_USER_TABLE);
             }
-
-            // Add root user
-            // this.addRootUser();
 
             console.log(`Database initialized successfully at ${this.dbPath}`);
             return this.db;

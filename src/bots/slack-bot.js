@@ -13,15 +13,10 @@ export default async function startSlackBot(config) {
 
         const slackBot = new App({
             botId: Bun.env.SLACK_BOT_ID,
-            // token: Bun.env.SLACK_BOT_OAUTH_TOKEN, // Bot User OAuth Token
-            // signingSecret: Bun.env.SLACK_SIGNING_SECRET, // Signing Secret
-            // socketMode: true,
-            // appToken: Bun.env.SLACK_APP_TOKEN, // App-Level Token (xapp-...)
-
-            token: process.env.SLACK_BOT_OAUTH_TOKEN,
-            signingSecret: process.env.SLACK_SIGNING_SECRET,
+            token: Bun.env.SLACK_BOT_OAUTH_TOKEN,
+            signingSecret: Bun.env.SLACK_SIGNING_SECRET,
             socketMode: true,
-            appToken: process.env.SLACK_APP_TOKEN,
+            appToken: Bun.env.SLACK_APP_TOKEN,
 
             customRoutes: [],
             retryConfig: {
@@ -51,23 +46,6 @@ export default async function startSlackBot(config) {
             sendMenu: () => {},
         });
 
-        // Add specific command handler for /ghostwriter
-        // slackBot.command("/ghostwriter", async ({ command, ack, say }) => {
-        //     // Always acknowledge the command first
-        //     await ack();
-
-        //     try {
-        //         // Handle the command
-        //         console.log("Handling /ghostwriter command");
-        //     } catch (error) {
-        //         console.error("Error processing command:", error);
-        //     }
-        // });
-
-        console.log("Slack bot starting...");
-        // Start your app
-        // slackBot.start(config.PORT || 3000);
-
         await actionManager.registerSlackCommands();
 
         // Start the app
@@ -85,8 +63,6 @@ export default async function startSlackBot(config) {
         slackBot.error(async error => {
             console.error("Slack Error:", error);
         });
-
-        console.log("⚡️ Bolt app is running!");
 
         parentPort?.postMessage({ type: "ready", bot: "slack" });
 

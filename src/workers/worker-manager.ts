@@ -54,7 +54,6 @@ class WorkerManager {
             }, this.retryDelay);
         } else {
             console.error(`Worker failed after ${this.maxRetries} retry attempts`);
-            // Implement additional error handling (e.g., notify admin, log to monitoring system)
         }
     }
 

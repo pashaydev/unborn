@@ -1,8 +1,7 @@
-import crypto from "crypto";
 import { getBucket } from "../storage";
-import { Database } from "bun:sqlite";
 import { DatabaseManager } from "./db";
 import fs from "fs";
+import cron from "node-cron";
 
 class DatabaseSaver {
     /**
@@ -13,12 +12,7 @@ class DatabaseSaver {
      * @type {number} interval
      * @private
      */
-    #interval = 1000 * 60 * 15;
-    // #interval = 1000 * 60 * 60; // 1 hour
-    /**
-     * @type {string} id
-     * @private
-     */
+
     id;
     /**
      * @param {Storage} bucket
@@ -27,10 +21,9 @@ class DatabaseSaver {
     #bucket;
 
     /**
-     * @type {number} rafId
-     * @private
+     * @type {import("node-cron").ScheduledTask}
      */
-    #rafId;
+    #task;
 
     /**
      * @param {DatabaseManager} dbManager
@@ -43,16 +36,13 @@ class DatabaseSaver {
         this.#dbManager = dbManager;
     }
     startSaving() {
-        if (this.#rafId) {
-            clearInterval(this.#rafId);
-        }
-
-        this.#rafId = setInterval(async () => {
+        this.#task = cron.schedule("0 * * * *", async () => {
             try {
                 const dbPath = DatabaseManager.determineDbPath();
 
                 // Verify the path exists and is a file
                 const stats = await fs.promises.stat(dbPath);
+
                 if (!stats.isFile()) {
                     throw new Error(`Path is not a file: ${dbPath}`);
                 }
@@ -68,15 +58,17 @@ class DatabaseSaver {
                         this.id
                     }.sqlite`,
                 });
-                console.log("Saved database to GCS");
+                console.log("Saved database to GCS, file name: ", tempFilePath);
             } catch (error) {
                 console.error("Failed to save database to GCS:", error);
             }
-        }, this.#interval);
+        });
     }
 
     destory() {
-        clearInterval(this.#rafId);
+        if (this.#task) {
+            this.#task.removeAllListeners();
+        }
     }
 
     /**

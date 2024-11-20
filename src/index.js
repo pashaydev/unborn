@@ -1,4 +1,4 @@
-import { Elysia } from "elysia";
+// import { Elysia } from "elysia";
 import { join } from "path";
 import DatabaseSaver from "./database/db-saver.js";
 import { DatabaseManager } from "./database/db.js";
@@ -33,23 +33,23 @@ dbManager.initialize();
 const dbSaver = new DatabaseSaver(dbManager);
 
 // Setup Elysia server
-const elysia = new Elysia();
-const PORT = Bun.env.PORT || 3000;
+// const elysia = new Elysia();
+// const PORT = Bun.env.PORT || 3000;
 
-elysia.post(`/webhook/${config.SECRET_PATH}`, ({ body }) => {
-    telegramWorker.postMessage({ type: "update", body });
-    return { status: "ok" };
-});
+// elysia.post(`/webhook/${config.SECRET_PATH}`, ({ body }) => {
+//     telegramWorker.postMessage({ type: "update", body });
+//     return { status: "ok" };
+// });
 
-elysia.listen(
-    {
-        port: PORT,
-        hostname: Bun.env.NODE_ENV === "production" ? "0.0.0.0" : "",
-    },
-    () => {
-        console.log(`Server is running on port ${PORT}!`);
-    }
-);
+// elysia.listen(
+//     {
+//         port: PORT,
+//         hostname: Bun.env.NODE_ENV === "production" ? "0.0.0.0" : "",
+//     },
+//     () => {
+//         console.log(`Server is running on port ${PORT}!`);
+//     }
+// );
 
 // Implement periodic health check
 setInterval(() => {

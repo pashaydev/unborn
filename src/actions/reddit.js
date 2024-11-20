@@ -59,10 +59,10 @@ export default class RedditHandler {
         }
     }
 
-    initAction(ctx, action) {
+    initAction(ctx) {
         this.handleInitAction(ctx);
     }
-    initCommand(ctx, action) {
+    initCommand(ctx) {
         this.handleInitAction(ctx);
     }
 
@@ -94,7 +94,7 @@ export default class RedditHandler {
                             type: "button",
                             text: {
                                 type: "plain_text",
-                                text: "TechMemes",
+                                text: "Tech",
                             },
                             action_id: "reddit:tech-memes",
                         },
@@ -115,7 +115,7 @@ export default class RedditHandler {
                             type: "button",
                             text: {
                                 type: "plain_text",
-                                text: "JustMemes",
+                                text: "mem",
                             },
                             action_id: "reddit:memes",
                         },
@@ -232,7 +232,7 @@ export default class RedditHandler {
                             callback_data: "reddit:cute",
                         },
                         {
-                            text: "TechMemes",
+                            text: "Tech",
                             callback_data: "reddit:tech-memes",
                         },
                     ],
@@ -242,7 +242,7 @@ export default class RedditHandler {
                             callback_data: "reddit:art",
                         },
                         {
-                            text: "JustMemes",
+                            text: "mem",
                             callback_data: "reddit:memes",
                         },
                     ],
@@ -264,7 +264,7 @@ export default class RedditHandler {
                 .setStyle(ButtonStyle.Secondary),
             new ButtonBuilder()
                 .setCustomId("reddit:tech-memes")
-                .setLabel("TechMemes")
+                .setLabel("Tech")
                 .setStyle(ButtonStyle.Secondary),
             new ButtonBuilder()
                 .setCustomId("reddit:art")
@@ -272,7 +272,7 @@ export default class RedditHandler {
                 .setStyle(ButtonStyle.Secondary),
             new ButtonBuilder()
                 .setCustomId("reddit:memes")
-                .setLabel("JustMemes")
+                .setLabel("mem")
                 .setStyle(ButtonStyle.Secondary),
         ];
 

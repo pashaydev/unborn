@@ -1,5 +1,3 @@
-import fetch from "node-fetch";
-import Bun from "bun";
 import puppeteer from "puppeteer";
 
 class ScrapperHandler {
