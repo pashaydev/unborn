@@ -239,14 +239,14 @@ class GhostwriterHandler {
         console.log("Text input:", textInput);
 
         if (actionName === "ghostwriter") {
-            const userId = interaction.member.user.id;
+            const userId = interaction.member?.user?.id || interaction.user.id;
             this.messageHash[userId] = 0;
             this.activeUsers.set(userId, "ghostwriter");
 
             const context = {
                 from: {
                     id: userId,
-                    first_name: interaction.member.user.username,
+                    first_name: interaction.member?.user?.username || interaction.user.globalName,
                     last_name: "",
                 },
                 chat: {
@@ -279,7 +279,7 @@ class GhostwriterHandler {
 
         if (actionName === "ghostwriterfromtexttoaudio") {
             try {
-                const userId = interaction.member.user.id;
+                const userId = interaction.member?.user?.id || interaction.user.id;
                 this.messageHash[userId] = 0;
                 this.activeUsers.set(userId, "ghostwriterfromtexttoaudio");
 
@@ -294,7 +294,8 @@ class GhostwriterHandler {
                 const context = {
                     from: {
                         id: userId,
-                        first_name: interaction.member.user.username,
+                        first_name:
+                            interaction.member?.user?.username || interaction.user.globalName,
                         last_name: "",
                     },
                     chat: {
@@ -334,7 +335,7 @@ class GhostwriterHandler {
         }
 
         if (actionName === "ghostwriteraudio") {
-            const userId = interaction.member.user.id;
+            const userId = interaction.member?.user?.id || interaction.user.id;
             this.messageHash[userId] = 0;
             this.activeUsers.set(userId, "ghostwriteraudio");
 

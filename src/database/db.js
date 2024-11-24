@@ -1,30 +1,7 @@
-import { Database } from "bun:sqlite";
 import fs from "fs";
-import DatabaseSaver from "./db-saver";
+import getClient from "./supabase.js";
 
 export class DatabaseManager {
-    static SQL_QUERIES = {
-        CREATE_HISTORY_TABLE: `
-            CREATE TABLE IF NOT EXISTS history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                user_input TEXT,
-                bot_response TEXT,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-            );
-        `,
-        CREATE_USER_TABLE: `
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER,
-                username TEXT,
-                access_level INTEGER DEFAULT 0,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-            );
-            `,
-        INSERT_HISTORY: "INSERT INTO history (user_id, user_input, bot_response) VALUES (?, ?, ?)",
-    };
-
     constructor() {
         this.dbPath = DatabaseManager.determineDbPath();
         this.dbDir = DatabaseManager.determineDbDir();
@@ -56,52 +33,19 @@ export class DatabaseManager {
 
     async initialize() {
         try {
-            this.ensureDirectoryExists();
-
-            console.log("Initializing database...", this.dbPath);
-
-            if (Bun.env.NODE_ENV !== "test") {
-                // Restore database from Google Cloud Storage
-                await DatabaseSaver.restoreDatabase();
-            }
-
-            this.db = new Database(this.dbPath, {
-                verbose: console.log,
-                readwrite: true,
-                create: true,
-            });
-
-            // Check if history table exists
-            const tableExists = this.db
-                .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='history'")
-                .get();
-
-            if (!tableExists) {
-                // Create the table
-                this.db.exec(SQL_QUERIES.CREATE_HISTORY_TABLE);
-            }
-
-            // Check if users table exists
-            const usersTableExists = this.db
-                .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
-                .get();
-
-            if (!usersTableExists) {
-                // Create the table
-                this.db.exec(SQL_QUERIES.CREATE_USER_TABLE);
-            }
-
-            console.log(`Database initialized successfully at ${this.dbPath}`);
-            return this.db;
-        } catch (error) {
-            console.error("Failed to initialize database:", error);
-            throw error;
+            return getClient();
+        } catch (err) {
+            console.log(err);
         }
     }
 
-    getDatabase() {
+    /**
+     *
+     * @returns {Promise<import("@supabase/supabase-js").SupabaseClient>}
+     */
+    async getDatabase() {
         if (!this.db) {
-            return this.initialize();
+            return await this.initialize();
         }
         return this.db;
     }
@@ -117,31 +61,23 @@ export class DatabaseManager {
 // Export singleton instance
 export const databaseManager = new DatabaseManager();
 
-// Export SQL queries for external use
-export const { SQL_QUERIES } = DatabaseManager;
-
 export const insertHistory = async ({ userInput, botResponse, userId }) => {
     // Get database instance
-    const db = await databaseManager.getDatabase();
-    // Use SQL queries
-    db.query(SQL_QUERIES.INSERT_HISTORY).run(userId, userInput || "", botResponse || "");
-    console.log("History saved to database", { userInput, botResponse, userId });
-};
+    try {
+        console.log("Inserting history to database", { userInput, botResponse, userId });
+        const db = await databaseManager.getDatabase();
+        const data = await db.from("history").insert({
+            user_input: userInput,
+            bot_response: botResponse,
+            user_id: userId,
+        });
 
-export const addNewUser = async ({ userId, username }) => {
-    const db = await databaseManager.getDatabase();
-    db.query("INSERT INTO users (user_id, username) VALUES (?, ?)").run(userId, username);
-    console.log("New user added to database", { userId, username });
-};
-
-export const getHistory = async ({ userId }) => {
-    const db = await databaseManager.getDatabase();
-
-    const rows = db.prepare("SELECT * FROM history WHERE user_id = ?").all(userId);
-
-    console.log("Get history", rows);
-
-    return rows;
+        // console.log("DB", data, error);
+        console.log("History saved to database", data);
+        // return data;
+    } catch (err) {
+        console.log(err);
+    }
 };
 
 /**

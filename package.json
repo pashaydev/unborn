@@ -11,14 +11,14 @@
     },
     "author": "PashaYakubovsky",
     "license": "ISC",
-    "description": "unborn is multiplatfrom bot for discord and telegram",
+    "description": "unborn is multi platform bot for discord,telegram,slack",
     "dependencies": {
         "@anthropic-ai/sdk": "^0.32.1",
         "@google-cloud/storage": "^7.14.0",
         "@slack/bolt": "^4.1.0",
+        "@supabase/supabase-js": "^2.46.1",
         "crypto": "^1.0.1",
         "discord.js": "^14.16.3",
-        "elysia": "^1.1.24",
         "node-cron": "^3.0.3",
         "officeparser": "^5.0.0",
         "openai": "^4.71.1",
@@ -28,6 +28,7 @@
         "telegraf": "^4.16.3"
     },
     "devDependencies": {
-        "@types/bun": "^1.1.13"
+        "@types/bun": "^1.1.13",
+        "supabase": "^1.223.10"
     }
 }

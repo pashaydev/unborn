@@ -18,7 +18,9 @@ class WorkerManager {
     }
 
     private initializeWorker() {
-        this.worker = new Worker(this.workerPath);
+        this.worker = new Worker(this.workerPath, {
+            type: "module",
+        });
         this.setupEventHandlers();
         this.startWorker();
     }

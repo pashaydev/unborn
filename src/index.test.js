@@ -1,12 +1,10 @@
 import assert from "node:assert";
 import { test, describe, it, beforeEach, expect } from "bun:test";
-import { databaseManager, SQL_QUERIES } from "./database/db.js";
-
+import { databaseManager } from "./database/db.js";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { Telegraf } from "telegraf";
 import ChessGameHandler, { BOARD_CONFIG } from "./actions/chess.js";
-import { Database } from "bun:sqlite";
 import puppeteer from "puppeteer";
 import { Client, GatewayIntentBits, Partials } from "discord.js";
 import { App } from "@slack/bolt";
@@ -20,17 +18,18 @@ const record = {
 test("DB Insert record into the history table", async () => {
     try {
         // Get database instance
-        const db = databaseManager.getDatabase();
+        const db = await databaseManager.getDatabase();
 
-        db.query(SQL_QUERIES.INSERT_HISTORY).run(
-            record.userId,
-            record.userInput,
-            record.botResponse
-        );
+        db.from("history").insert({
+            user_input: record.userInput,
+            bot_response: record.botResponse,
+            user_id: record.userId,
+        });
 
-        const history = db
-            .query("SELECT * FROM history WHERE user_id = $userId")
-            .get({ $userId: record.userId });
+        const res = await db.from("history").select("**").eq("user_id", record.userId);
+        const history = res.data;
+
+        console.log("History record:", history);
 
         expect(history).toBeTruthy();
         expect(history.user_input).toBe(record.userInput);
@@ -44,20 +43,24 @@ test("DB Insert record into the history table", async () => {
 });
 
 test("Record from db should be deleted", async () => {
-    const db = new Database(":memory:");
+    const db = await databaseManager.getDatabase();
 
-    db.exec(SQL_QUERIES.CREATE_HISTORY_TABLE);
+    db.from("history").insert({
+        user_input: record.userInput,
+        bot_response: record.botResponse,
+        user_id: record.userId,
+    });
 
-    const insertRecord = db.prepare(SQL_QUERIES.INSERT_HISTORY);
-    insertRecord.run(record.userId, record.userInput, record.botResponse);
+    const history = db.from("history").select("*").eq("user_id", record.userId);
 
-    db.query("SELECT * FROM history WHERE user_id = ?").run(record.userId);
+    expect((await history).data).toBeTruthy();
 
-    db.query("DELETE FROM history WHERE user_id = ?").run(record.userId);
+    // delete record
+    db.from("history").delete().eq("user_id", record.userId);
 
-    const isDeleted = db.query("SELECT * FROM history WHERE user_id = ?").get(record.userId);
+    const isDeleted = db.from("history").select("*").eq("user_id", record.userId);
 
-    expect(isDeleted).toBeFalsy();
+    expect(isDeleted.data).toBeFalsy();
 
     databaseManager.close();
 });

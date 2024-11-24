@@ -38,6 +38,8 @@ This project is a Bun.js application running bot in telegram,discord,slack
     export SLACK_BOT_ID=your-slack-app-id
     export SLACK_APP_TOKEN=your-slack-app-token
     export SLACK_BOT_OAUTH_TOKEN=your-slack-ouath
+    export SUPABASE_URL=your-supabase-url
+    export SUPABASE_SERVICE_ROLE=your-supabase-service-role-token
     ```
 
 ## Usage
@@ -72,5 +74,5 @@ npm run docker:build
 ```
 
 ## Screenshoots
-<img width="1512" alt="123" src="https://github.com/user-attachments/assets/2fd33500-09fd-42ff-8bfa-12ae68f99d0a">
 
+<img width="1512" alt="123" src="https://github.com/user-attachments/assets/2fd33500-09fd-42ff-8bfa-12ae68f99d0a">

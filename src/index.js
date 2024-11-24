@@ -1,7 +1,4 @@
-// import { Elysia } from "elysia";
 import { join } from "path";
-import DatabaseSaver from "./database/db-saver.js";
-import { DatabaseManager } from "./database/db.js";
 import WorkerManager from "./workers/worker-manager.js";
 
 // Get current directory and create worker paths
@@ -25,31 +22,6 @@ const config = {
 const telegramWorkerManager = new WorkerManager(telegramWorkerPath, config);
 const discordWorkerManager = new WorkerManager(discordWorkerPath, config);
 const slackWorkerManager = new WorkerManager(slackWorkerPath, config);
-
-// Setup database
-const dbManager = new DatabaseManager();
-dbManager.initialize();
-// Setup database saver
-const dbSaver = new DatabaseSaver(dbManager);
-
-// Setup Elysia server
-// const elysia = new Elysia();
-// const PORT = Bun.env.PORT || 3000;
-
-// elysia.post(`/webhook/${config.SECRET_PATH}`, ({ body }) => {
-//     telegramWorker.postMessage({ type: "update", body });
-//     return { status: "ok" };
-// });
-
-// elysia.listen(
-//     {
-//         port: PORT,
-//         hostname: Bun.env.NODE_ENV === "production" ? "0.0.0.0" : "",
-//     },
-//     () => {
-//         console.log(`Server is running on port ${PORT}!`);
-//     }
-// );
 
 // Implement periodic health check
 setInterval(() => {
