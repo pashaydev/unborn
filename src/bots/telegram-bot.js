@@ -4,6 +4,7 @@ import { parentPort } from "worker_threads";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import UserManager from "../user-manager.js";
+import { commands } from "../commands.js";
 
 export default function startTelegramBot(config) {
     const parsedConfig = config;
@@ -27,39 +28,17 @@ export default function startTelegramBot(config) {
 
     console.log("Telegram bot starting...", userManager);
 
-    const sendMenu = async (ctx, text = "Choose options bellow.") => {
-        await ctx.reply(text, {
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        {
-                            text: "AI docks parser",
-                            callback_data: "dockasker",
-                        },
-                        {
-                            text: "Random reddit post",
-                            callback_data: "reddit",
-                        },
-                    ],
-                    [
-                        {
-                            text: "Play chess",
-                            callback_data: "chess",
-                        },
-                        {
-                            text: "Ghostwriter",
-                            callback_data: "ghostwriter",
-                        },
-                    ],
-                ],
-                resize_keyboard: true,
-            },
-        });
+    const sendMenu = async (
+        ctx,
+        text = "This bot is a collection of various actions. You can use [ / ] to see the list of available commands."
+    ) => {
+        await ctx.reply(text);
     };
 
     const telegramBot = new Telegraf(TELEGRAM_BOT_TOKEN, {
         telegram: { webhookReply: true },
     });
+
     const actionManager = new ActionManager({
         telegramBot,
         openai,
@@ -68,62 +47,36 @@ export default function startTelegramBot(config) {
         sendMenu,
     });
 
-    const setupWebhook = async () => {
-        try {
-            await telegramBot.telegram.deleteWebhook();
-            const webhookUrl = `${TELEGRAM_WEBHOOK_URL}/webhook/${SECRET_PATH}`;
-            await telegramBot.telegram.setWebhook(webhookUrl, {
-                allowed_updates: ["message", "callback_query"],
-            });
-            console.log("Webhook set successfully!");
-            console.log(`Webhook URL: ${webhookUrl}`);
+    // const setupWebhook = async () => {
+    //     try {
+    //         await telegramBot.telegram.deleteWebhook();
+    //         const webhookUrl = `${TELEGRAM_WEBHOOK_URL}/webhook/${SECRET_PATH}`;
+    //         await telegramBot.telegram.setWebhook(webhookUrl, {
+    //             allowed_updates: ["message", "callback_query"],
+    //         });
+    //         console.log("Webhook set successfully!");
+    //         console.log(`Webhook URL: ${webhookUrl}`);
 
-            const webhookInfo = await telegramBot.telegram.getWebhookInfo();
-            console.log("Webhook Info:", webhookInfo);
+    //         const webhookInfo = await telegramBot.telegram.getWebhookInfo();
+    //         console.log("Webhook Info:", webhookInfo);
 
-            return webhookUrl;
-        } catch (error) {
-            console.error("Error setting webhook:", error);
-        }
-        return "";
-    };
+    //         return webhookUrl;
+    //     } catch (error) {
+    //         console.error("Error setting webhook:", error);
+    //     }
+    //     return "";
+    // };
 
     const initializeBotHandlers = async () => {
         // Register commands
-        await telegramBot.telegram.setMyCommands([
-            { command: "/help", description: "Get help" },
-            { command: "/start", description: "Start the bot" },
-            { command: "/menu", description: "Show menu" },
-            { command: "/reddit", description: "Reddit interactions" },
-            { command: "/ghostwriter", description: "Make polite message" },
-            {
-                command: "/ghostwriteraudio",
-                description: "Make polite message from audio to audio",
-            },
-            {
-                command: "/ghostwriterfromtexttoaudio",
-                description: "Make polite message from text to audio",
-            },
-            { command: "/imagegen", description: "Generate image" },
-            {
-                command: "/scrapper",
-                description: "Web scrapping across three most popular search engines",
-            },
-        ]);
+        await telegramBot.telegram.setMyCommands(
+            commands.map(c => ({ command: c.command, description: c.description }))
+        );
 
         telegramBot.command("start", async ctx => {
-            sendMenu(ctx, "Choose options bellow.");
-        });
-
-        telegramBot.command("menu", ctx => {
-            sendMenu(ctx);
-        });
-
-        telegramBot.command("help", async ctx => {
             await ctx.reply(
-                "This bot is a collection of various actions. You can choose an action from the menu below. Or you can use [ / ] to see the list of available commands."
+                "This bot is a collection of various actions. You can use [ / ] to see the list of available commands."
             );
-            sendMenu(ctx);
         });
 
         const userManager = new UserManager();

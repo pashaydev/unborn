@@ -1,6 +1,7 @@
-import { saveHistory } from "../database/db.js"; // Added .js extension
+import { saveHistory } from "../database/db.js";
 import { parseOfficeAsync } from "officeparser";
 import * as pdfjsLib from "pdfjs-dist";
+import PDFParser from "../libs/pdf-parser.js";
 
 export default class DockAsker {
     /**
@@ -22,13 +23,11 @@ export default class DockAsker {
     initAction(ctx, action) {
         if (action === "dockasker") {
             ctx.reply("Send me a file. (.docx, .txt, .xlsx, .pdf)");
-            // this.setupMessageHandlers();
         }
     }
     initCommand(ctx, action) {
         if (action === "dockasker") {
             ctx.reply("Send me a file. (.docx, .txt, .xlsx, .pdf)");
-            // this.setupMessageHandlers();
         }
     }
     async handleDiscordSlashCommand(interaction, actionName) {
@@ -37,7 +36,6 @@ export default class DockAsker {
             this.activeUsers.add(userId);
 
             await interaction.editReply("Supported file types: .txt, .pdf");
-            // await interaction.deferReply();
 
             const inputText = interaction.options.getString("input");
             const docFile = interaction.options.getAttachment("attachment");
@@ -93,12 +91,6 @@ export default class DockAsker {
      * @param {import('discord.js').Attachment} ctx - Discord message object
      */
     parseDiscordFile(attachment) {}
-
-    // setupMessageHandlers() {
-    //     // Using one-time handlers to prevent multiple registrations
-    //     this.telegramBot.on(message("document"), ctx => this.handleDocumentMessage(ctx), { once: true });
-    //     this.telegramBot.on(message("text"), ctx => this.handleTextMessage(ctx), { once: true });
-    // }
 
     async handleDocumentMessage(ctx) {
         const fileType = ctx.message.document.mime_type;
@@ -325,61 +317,6 @@ export default class DockAsker {
             return handle[fileData.fileType](fileBlob);
         } else {
             throw new Error("Unsupported file type.");
-        }
-    }
-}
-
-class PDFParser {
-    static async parsePDF(fileBuffer) {
-        try {
-            const loadingTask = pdfjsLib.getDocument({ data: fileBuffer });
-            const pdf = await loadingTask.promise;
-            let text = "";
-
-            for (let i = 1; i <= pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
-                const content = await page.getTextContent();
-                text += content.items.map(item => item.str).join(" ") + "\n";
-            }
-
-            return text;
-        } catch (error) {
-            console.error("Error parsing PDF:", error);
-            return null;
-        }
-    }
-
-    static async parseFromBuffer(fileBuffer) {
-        try {
-            const data = await pdf(fileBuffer);
-            return {
-                success: true,
-                text: data.text,
-                info: data.info,
-                metadata: data.metadata,
-                numPages: data.numpages,
-            };
-        } catch (error) {
-            console.error("PDF parsing error:", error);
-            return {
-                success: false,
-                error: error.message,
-            };
-        }
-    }
-
-    static async parseFromURL(url) {
-        try {
-            const response = await fetch(url);
-            const buffer = await response.arrayBuffer();
-            const fileBuffer = Buffer.from(buffer);
-            return await this.parseFromBuffer(fileBuffer);
-        } catch (error) {
-            console.error("PDF download error:", error);
-            return {
-                success: false,
-                error: error.message,
-            };
         }
     }
 }

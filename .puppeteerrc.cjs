@@ -16,7 +16,7 @@ module.exports = {
     },
     // Set cache directory relative to project root
     cacheDirectory: cacheDir,
-    executablePath: Bun.env.CHROME_BIN || null,
+    executablePath: Bun?.env?.CHROME_BIN || null,
     // Add additional browser launch arguments if needed
     browserLaunchArgs: [
         "--no-sandbox",

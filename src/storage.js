@@ -14,6 +14,6 @@ const storage = new Storage({
 // The ID of your GCS bucket
 const bucketName = Bun.env.GCS_BUCKET_NAME;
 
-export const getBucket = () => {
-    return storage.bucket(bucketName);
+export const getBucket = (bn = bucketName) => {
+    return storage.bucket(bn);
 };

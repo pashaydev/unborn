@@ -1,5 +1,6 @@
 import { join } from "path";
 import WorkerManager from "./workers/worker-manager.js";
+import startTelegramBot from "./bots/telegram-bot.js";
 
 // Get current directory and create worker paths
 const currentDir = import.meta.dir;
@@ -19,14 +20,16 @@ const config = {
 };
 
 // Create worker managers
-const telegramWorkerManager = new WorkerManager(telegramWorkerPath, config);
-const discordWorkerManager = new WorkerManager(discordWorkerPath, config);
-const slackWorkerManager = new WorkerManager(slackWorkerPath, config);
+// const telegramWorkerManager = new WorkerManager(telegramWorkerPath, config);
+// const discordWorkerManager = new WorkerManager(discordWorkerPath, config);
+// const slackWorkerManager = new WorkerManager(slackWorkerPath, config);
+
+startTelegramBot(config);
 
 // Implement periodic health check
-setInterval(() => {
-    const workers = [telegramWorkerManager, discordWorkerManager, slackWorkerManager];
-    workers.forEach(worker => {
-        worker.postMessage({ type: "healthCheck" });
-    });
-}, 60000);
+// setInterval(() => {
+//     const workers = [telegramWorkerManager, discordWorkerManager, slackWorkerManager];
+//     workers.forEach(worker => {
+//         worker.postMessage({ type: "healthCheck" });
+//     });
+// }, 60000);

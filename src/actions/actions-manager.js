@@ -6,6 +6,8 @@ import ImagegenHandler from "./imagegen.js";
 import { message } from "telegraf/filters";
 import ScrapperHandler from "./scrapper.js";
 import { Events, Routes, SlashCommandBuilder } from "discord.js";
+import MinecraftServerHandler from "./minecraft.js";
+import StoryTellingHandler from "./story.js";
 
 class ActionManager {
     #implementedActions = [
@@ -17,6 +19,8 @@ class ActionManager {
         "ghostwriterfromtexttoaudio",
         "ghostwriteraudio",
         "scrapper",
+        "story",
+        "minecraft",
     ];
 
     /**
@@ -144,37 +148,6 @@ class ActionManager {
         this.slackBot.action("dummy_action", async args => {
             await chessHandler.handleSlackAction(args);
         });
-
-        // this.slackBot.message(async payload => {
-        //     const userId = payload.context.userId;
-        //     const chatId = payload.message.channel;
-
-        //     console.log("Slack Message:", payload.payload.text, "from:", userId, "chat:", chatId);
-
-        //     const user = await this.userManager.getUser(chatId, userId, payload, "slack");
-
-        //     const activeFunction = user?.activeFunction;
-        //     const once = user?.once;
-
-        //     if (activeFunction) {
-        //         const actionInstance = this.getActionInstance(activeFunction);
-        //         if (actionInstance && "handleSlackMessage" in actionInstance) {
-        //             actionInstance.handleSlackMessage(message, say);
-        //         }
-
-        //         if (once) {
-        //             this.userManager.updateInstance({
-        //                 chatId,
-        //                 userId,
-        //                 data: {
-        //                     activeFunction: null,
-        //                     from: "slack",
-        //                     username: payload?.payload?.username,
-        //                 },
-        //             });
-        //         }
-        //     }
-        // });
     }
 
     async registerDiscordCommands() {
@@ -445,6 +418,7 @@ class ActionManager {
             const chatId = ctx.chat.id;
 
             console.log("Telegram Document message from:", userId, "chat:", chatId);
+
             const user = await this.userManager.getUser(chatId, userId);
             const activeFunction = user?.active_command;
             const once = user?.once;
@@ -491,6 +465,9 @@ class ActionManager {
         if (actionName === "reddit") return new RedditHandler(args);
         if (actionName === "chess") return new ChessGameHandler(args);
         if (actionName === "imagegen") return new ImagegenHandler(args);
+        if (actionName === "minecraft") return new MinecraftServerHandler(args);
+        if (actionName === "story") return new StoryTellingHandler(args);
+
         if (actionName.includes("ghostwriter")) {
             if (!this.actions["ghostwriter"]) {
                 this.actions["ghostwriter"] = new GhostwriterHandler(args);

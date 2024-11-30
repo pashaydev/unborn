@@ -428,7 +428,7 @@ class GhostwriterHandler {
             console.log("Generating speech from text:", text);
             const response = await this.openai.audio.speech.create({
                 model: "tts-1-hd",
-                voice: "alloy",
+                voice: "nova",
                 input: text,
                 response_format: "mp3",
             });

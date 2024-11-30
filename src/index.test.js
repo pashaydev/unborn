@@ -15,7 +15,7 @@ const record = {
     botResponse: "Hi",
 };
 
-test("DB Insert record into the history table", async () => {
+test("Database Insert record into the history table", async () => {
     try {
         // Get database instance
         const db = await databaseManager.getDatabase();
@@ -42,7 +42,7 @@ test("DB Insert record into the history table", async () => {
     }
 });
 
-test("Record from db should be deleted", async () => {
+test("Record from Database should be deleted", async () => {
     const db = await databaseManager.getDatabase();
 
     db.from("history").insert({

@@ -1,7 +1,13 @@
 import fs from "fs";
 import getClient from "./supabase.js";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { Database } from "../../database.types.js";
 
 export class DatabaseManager {
+    dbPath: string;
+    dbDir: string;
+    db: SupabaseClient<Database> | null;
+
     constructor() {
         this.dbPath = DatabaseManager.determineDbPath();
         this.dbDir = DatabaseManager.determineDbDir();
@@ -15,7 +21,7 @@ export class DatabaseManager {
             development: "db.sqlite",
         };
 
-        return pathMap[Bun.env.NODE_ENV] || "db.sqlite";
+        return pathMap[Bun.env.NODE_ENV!] || "db.sqlite";
     }
 
     static determineDbDir() {
@@ -52,7 +58,6 @@ export class DatabaseManager {
 
     close() {
         if (this.db) {
-            this.db.close();
             this.db = null;
         }
     }
@@ -66,25 +71,23 @@ export const insertHistory = async ({ userInput, botResponse, userId }) => {
     try {
         console.log("Inserting history to database", { userInput, botResponse, userId });
         const db = await databaseManager.getDatabase();
+        if (!db) {
+            return console.error("Database is not available");
+        }
         const data = await db.from("history").insert({
             user_input: userInput,
             bot_response: botResponse,
             user_id: userId,
         });
 
-        // console.log("DB", data, error);
         console.log("History saved to database", data);
-        // return data;
     } catch (err) {
         console.log(err);
     }
 };
 
-/**
- * Saves interaction history to database
- * @param {Object} args - History entry parameters
- * @param {number} args.userId - Telegram user ID
- * @param {string} args.userInput - User's input
- * @param {string} args.telegramBotResponse - Bot's response
- */
-export const saveHistory = async args => await insertHistory(args);
+export const saveHistory = async (args: {
+    userInput: string;
+    botResponse: string;
+    userId: string;
+}) => await insertHistory(args);
