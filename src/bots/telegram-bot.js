@@ -5,6 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import UserManager from "../user-manager.js";
 import { commands } from "../commands.js";
+import { databaseManager } from "../database/db.js";
 
 export default function startTelegramBot(config) {
     const parsedConfig = config;
@@ -47,27 +48,23 @@ export default function startTelegramBot(config) {
         sendMenu,
     });
 
-    // const setupWebhook = async () => {
-    //     try {
-    //         await telegramBot.telegram.deleteWebhook();
-    //         const webhookUrl = `${TELEGRAM_WEBHOOK_URL}/webhook/${SECRET_PATH}`;
-    //         await telegramBot.telegram.setWebhook(webhookUrl, {
-    //             allowed_updates: ["message", "callback_query"],
-    //         });
-    //         console.log("Webhook set successfully!");
-    //         console.log(`Webhook URL: ${webhookUrl}`);
-
-    //         const webhookInfo = await telegramBot.telegram.getWebhookInfo();
-    //         console.log("Webhook Info:", webhookInfo);
-
-    //         return webhookUrl;
-    //     } catch (error) {
-    //         console.error("Error setting webhook:", error);
-    //     }
-    //     return "";
-    // };
-
     const initializeBotHandlers = async () => {
+        let cmds = [];
+        try {
+            const db = await databaseManager.getDatabase();
+
+            if (db) {
+                const { data, error } = await db.from("commands").select("*");
+                if (error) throw new Error("Error request to database");
+                cmds = data;
+                console.log("Get commands was successful", data);
+            } else {
+                cmds = commands;
+            }
+        } catch (err) {
+            console.error("Error initialize bot handlers: ", err);
+            cmds = commands;
+        }
         // Register commands
         await telegramBot.telegram.setMyCommands(
             commands.map(c => ({ command: c.command, description: c.description }))
@@ -103,7 +100,6 @@ export default function startTelegramBot(config) {
     // Start the Telegram bot
     const start = async () => {
         console.log("Starting Telegram bot...");
-        // await setupWebhook();
         await initializeBotHandlers();
         telegramBot.launch();
 

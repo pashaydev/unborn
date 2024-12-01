@@ -110,7 +110,7 @@ export default class StoryTellingHandler {
             <choices>
             1. [First choice description]
             2. [Second choice description]
-            3. [Third choice description (if applicable)]
+            3. [Third choice description]
             </choices>
 
             Here's an example of how an interaction might look:
@@ -130,7 +130,7 @@ export default class StoryTellingHandler {
                 Rounding the corner, they froze in their tracks. Before them stood an enormous, three-headed dog, its massive paws planted firmly on a trapdoor. The beast's eyes locked onto the trio, and all three heads let out a thunderous bark that shook the very stones of the castle.
                 </story_continuation>
 
-                <choices
+                <choices>
                 1. Attempt to distract the dog and slip past it to the trapdoor.
                 2. Quickly retreat and try to find information about the three-headed dog in the library.
                 3. Use a spell to try and calm the dog down.
@@ -249,7 +249,12 @@ export default class StoryTellingHandler {
             const choices = parseChoices(storyPart);
             chat.choices = choices;
 
-            await ctx.reply(storyPart);
+            const parsedStory = storyPart.replace(
+                /<choices>[\s\S]*<\/choices>/,
+                choices.map((c, i) => `${i + 1}. ${c}`).join("\n")
+            );
+
+            if (parsedStory.length > 5) await ctx.reply(parsedStory);
             const choicesMessage = await this.sendChoices(ctx, choices);
             chat.choicesMessageId = choicesMessage.message_id;
 
@@ -365,14 +370,21 @@ export default class StoryTellingHandler {
             inputMessage: inputMessage,
         });
 
+        const choices = parseChoices(storyPart);
+        const parsedStory = storyPart.replace(
+            /<choices>[\s\S]*<\/choices>/,
+            choices.map((c, i) => `${i + 1}. ${c}`).join("\n")
+        );
+
         // Update chat history
         chat.history.push(inputMessage, {
             role: "assistant",
             content: storyPart,
         });
 
-        // Send story part to user
-        await ctx.reply(storyPart);
+        if (parsedStory.length > 5)
+            // Send story part to user
+            await ctx.reply(parsedStory);
 
         // Handle choices
         await this.processAndSendChoices(ctx, chat, storyPart);

@@ -36,11 +36,9 @@ class ScrapperHandler {
      */
     searchEngine;
     constructor(args) {
-        this.telegramBot = args.telegramBot;
-        this.anthropic = args.anthropic;
-        this.sendMenu = args.sendMenu;
-        this.openai = args.openai;
-        this.discordBot = args.discordBot;
+        for (const key in args) {
+            this[key] = args[key];
+        }
         this.activeSearches = [];
         this.maxActiveSearches = 2;
         this.searchEngine = new SearchEngine();
@@ -292,6 +290,18 @@ class ScrapperHandler {
             if (messages) {
                 html = messages;
             }
+
+            // try {
+            //     this.userManager.updateInstance({
+            //         chatId: ctx.chat.id,
+            //         userId: ctx.from.id,
+            //         data: {
+            //             activeFunction: null,
+            //         },
+            //     });
+            // } catch (err) {
+            //     console.log(err);
+            // }
 
             ctx.replyWithHTML(html);
         } catch (error) {

@@ -83,7 +83,6 @@ class ActionManager {
                     userId: context.context.userId,
                     data: {
                         activeFunction: command,
-                        once: command !== "chess",
                         from: "slack",
                         username: context?.payload?.user_name,
                     },
@@ -108,7 +107,6 @@ class ActionManager {
                     userId: context.context.userId,
                     data: {
                         activeFunction: "reddit",
-                        once: true,
                         from: "slack",
                         username: context?.payload?.username,
                     },
@@ -222,7 +220,6 @@ class ActionManager {
                         userId: interaction.user.id,
                         data: {
                             activeFunction: commandName,
-                            once: commandName !== "chess",
                             from: "discord",
                             username: interaction.user.username,
                         },
@@ -249,7 +246,6 @@ class ActionManager {
                     userId: ctx.from.id,
                     data: {
                         activeFunction: action,
-                        once: action !== "chess",
                         from: "telegram",
                         username: ctx.from.username,
                     },
@@ -266,7 +262,6 @@ class ActionManager {
                     userId: ctx.from.id,
                     data: {
                         activeFunction: action,
-                        once: action !== "chess",
                         from: "telegram",
                         username: ctx.from.username,
                     },
@@ -302,7 +297,6 @@ class ActionManager {
                     userId: message.author.id,
                     data: {
                         activeFunction: command,
-                        once: command !== "chess",
                         username: message.author.username,
                         from: "discord",
                     },
@@ -335,7 +329,6 @@ class ActionManager {
                     userId: interaction.user.id,
                     data: {
                         activeFunction: command,
-                        once: command !== "chess",
                         username: interaction.user.username,
                         from: "discord",
                     },
@@ -360,27 +353,32 @@ class ActionManager {
             );
             const user = await this.userManager.getUser(chatId, userId);
             const activeFunction = user?.active_command;
-            const once = user?.once;
 
             console.log("Active function:", activeFunction);
+            try {
+                const command = await this.userManager.getCommand(activeFunction);
 
-            if (activeFunction) {
-                const actionInstance = this.getActionInstance(activeFunction);
-                if (actionInstance && "handleTextMessage" in actionInstance) {
-                    actionInstance.handleTextMessage(ctx);
-                }
+                if (activeFunction) {
+                    const actionInstance = this.getActionInstance(activeFunction);
+                    if (actionInstance && "handleTextMessage" in actionInstance) {
+                        actionInstance.handleTextMessage(ctx);
+                    }
 
-                if (once) {
-                    this.userManager.updateInstance({
-                        chatId,
-                        userId,
-                        data: {
-                            activeFunction: null,
-                            from: "telegram",
-                            username: ctx.from.username,
-                        },
-                    });
+                    if (command?.once) {
+                        console.log("Clean active function from user object");
+                        this.userManager.updateInstance({
+                            chatId,
+                            userId,
+                            data: {
+                                activeFunction: null,
+                                from: "telegram",
+                                username: ctx.from.username,
+                            },
+                        });
+                    }
                 }
+            } catch (err) {
+                console.log("Error during handle telegram text message: ", err);
             }
         });
 
@@ -389,26 +387,31 @@ class ActionManager {
             const userId = ctx.from.id;
             const chatId = ctx.chat.id;
 
-            console.log("Telegram Voice message from:", userId, "chat:", chatId);
-            const user = await this.userManager.getUser(chatId, userId);
-            const activeFunction = user?.active_command;
-            const once = user?.once;
+            try {
+                console.log("Telegram Voice message from:", userId, "chat:", chatId);
+                const user = await this.userManager.getUser(chatId, userId);
+                const activeFunction = user?.active_command;
 
-            if (activeFunction) {
-                const actionInstance = this.getActionInstance(activeFunction);
-                actionInstance?.handleVoiceMessage(ctx);
+                const command = await this.userManager.getCommand(activeFunction);
 
-                if (once) {
-                    this.userManager.updateInstance({
-                        chatId,
-                        userId,
-                        data: {
-                            activeFunction: null,
-                            from: "telegram",
-                            username: ctx.from.username,
-                        },
-                    });
+                if (activeFunction) {
+                    const actionInstance = this.getActionInstance(activeFunction);
+                    actionInstance?.handleVoiceMessage(ctx);
+
+                    if (command?.once) {
+                        this.userManager.updateInstance({
+                            chatId,
+                            userId,
+                            data: {
+                                activeFunction: null,
+                                from: "telegram",
+                                username: ctx.from.username,
+                            },
+                        });
+                    }
                 }
+            } catch (err) {
+                console.log(err);
             }
         });
 
@@ -421,13 +424,13 @@ class ActionManager {
 
             const user = await this.userManager.getUser(chatId, userId);
             const activeFunction = user?.active_command;
-            const once = user?.once;
+            const command = await this.userManager.getCommand(activeFunction);
 
             if (activeFunction) {
                 const actionInstance = this.getActionInstance(activeFunction);
                 actionInstance?.handleDocumentMessage(ctx);
 
-                if (once) {
+                if (command?.once) {
                     this.userManager.updateInstance({
                         chatId,
                         userId,

@@ -1,5 +1,5 @@
-import { EmbedBuilder, Routes } from "discord.js";
-import getClient from "../database/supabase.js";
+import { databaseManager } from "../database/db.ts";
+import { EmbedBuilder } from "discord.js";
 
 export default class MinecraftServerHandler {
     /**
@@ -124,7 +124,13 @@ export default class MinecraftServerHandler {
     }
 
     async getServerInfo() {
-        const dbClient = getClient();
+        const dbClient = await databaseManager.getDatabase();
+
+        if (!dbClient) {
+            console.error("Error getting database");
+            return;
+        }
+
         const { data: rows } = await dbClient.from("servers").select("*");
 
         if (rows?.length > 0) {

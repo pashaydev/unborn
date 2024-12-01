@@ -37,21 +37,22 @@ export class DatabaseManager {
         }
     }
 
-    async initialize() {
+    async initialize(): Promise<SupabaseClient | undefined> {
         try {
-            return getClient();
+            const db = getClient();
+
+            if (db) this.db = db;
+
+            return db;
         } catch (err) {
             console.log(err);
         }
     }
 
-    /**
-     *
-     * @returns {Promise<import("@supabase/supabase-js").SupabaseClient>}
-     */
-    async getDatabase() {
+    async getDatabase(): Promise<SupabaseClient | undefined> {
         if (!this.db) {
-            return await this.initialize();
+            const db = await this.initialize();
+            return db;
         }
         return this.db;
     }

@@ -53,12 +53,19 @@ class UserManager {
         console.log("Updating user", userId, data, chatId);
         const db = await databaseManager.getDatabase();
         const query = {};
+        const _user = {
+            chatId: chatId,
+            userId: userId,
+            from: data.from,
+            username: data.username,
+            activeFunction: data.activeFunction,
+        };
 
         if (data.username) query.username = data.username;
         if (data.from) query.from = data.from;
         if (data.user_id) query.user_id = data.user_id;
         if (data.chat_id) query.chat_id = data.chat_id;
-        if (data.activeFunction) query.active_command = data.activeFunction;
+        query.active_command = data.activeFunction;
 
         try {
             // First, check if the user exists
@@ -69,13 +76,7 @@ class UserManager {
                 .single();
 
             if (checkError) {
-                return this.createUser({
-                    chatId: chatId,
-                    userId: userId,
-                    from: data.from,
-                    username: data.username,
-                    activeFunction: data.activeFunction,
-                });
+                return this.createUser(_user);
             }
 
             // Update the user
@@ -107,10 +108,9 @@ class UserManager {
                 this.instance[chatId] = {};
             }
 
-            // updatedUser.active_command = data.activeFunction;
-            updatedUser.once = data.once;
-            this.instance[chatId][userId] = updatedUser;
-            console.log("User updated", updatedUser);
+            this.instance[chatId][userId] = _user;
+            console.log("User updated Database: ", updatedUser);
+            console.log("User updated Memory: ", _user);
         } catch (error) {
             console.error("Error in updateInstance:", error);
         }
@@ -147,10 +147,6 @@ class UserManager {
      * @returns {Promise<Object>}
      */
     async getUser(chatId, userId) {
-        if (this.instance[chatId]?.[userId]) {
-            return this.instance[chatId][userId];
-        }
-
         const db = await databaseManager.getDatabase();
         const { data, error } = await db
             .from("users")
@@ -161,15 +157,42 @@ class UserManager {
 
         if (error) {
             console.error("Error fetching user:", error);
-            return null;
         }
 
         if (!this.instance[chatId]) {
             this.instance[chatId] = {};
         }
+
+        if (!data) {
+            if (this.instance[chatId]?.[userId]) {
+                return this.instance[chatId][userId];
+            }
+        }
+
         this.instance[chatId][userId] = data;
 
         return data;
+    }
+
+    async getCommand(commandName) {
+        try {
+            console.log("Attempting to get command: ", commandName);
+
+            const db = await databaseManager.getDatabase();
+            const { data: command, error } = await db
+                .from("commands")
+                .select("*")
+                .eq("name", commandName)
+                .single();
+
+            console.log("Command from database: ", command);
+
+            if (error) return null;
+
+            return command;
+        } catch (err) {
+            console.error("Error getting command: ", err);
+        }
     }
 }
 

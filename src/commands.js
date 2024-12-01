@@ -17,4 +17,6 @@ export const commands = [
     },
     { command: "/minecraft", description: "Readme for our minecraft server" },
     { command: "/story", description: "Interactive story telling" },
+    { command: "/chess", description: "ASCII chess game against AI" },
+    { command: "/dockasker", description: "Parse file and process content through AI" },
 ];
