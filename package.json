@@ -9,14 +9,13 @@
         "docker:build": "docker build -t unborn . && docker run -p 49160:8080 -d unborn",
         "test": "bun test"
     },
-    "author": "PashaYakubovsky",
+    "author": "Pasha Yakubovsky",
     "license": "ISC",
-    "description": "unborn is multi platform bot for discord,telegram,slack",
+    "description": "Unborn is multi platform bot for discord,telegram,slack",
     "dependencies": {
         "@anthropic-ai/sdk": "^0.32.1",
         "@elysiajs/jwt": "^1.1.1",
         "@elysiajs/swagger": "^1.1.6",
-        "@google-cloud/storage": "^7.14.0",
         "@slack/bolt": "^4.1.0",
         "@supabase/supabase-js": "^2.46.1",
         "bcrypt": "^5.1.1",
@@ -27,7 +26,6 @@
         "openai": "^4.71.1",
         "pdfjs-dist": "^4.8.69",
         "puppeteer": "^23.8.0",
-        "sqlite3": "^5.1.7",
         "telegraf": "^4.16.3"
     },
     "devDependencies": {
