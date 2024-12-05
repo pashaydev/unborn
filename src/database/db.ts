@@ -2,6 +2,7 @@ import fs from "fs";
 import getClient from "./supabase.js";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../../database.types.js";
+import { Context, Telegraf } from "telegraf";
 
 export class DatabaseManager {
     dbPath: string;
@@ -92,3 +93,60 @@ export const saveHistory = async (args: {
     botResponse: string;
     userId: string;
 }) => await insertHistory(args);
+
+export const updateTokensTracking = async (ctx: Context, rephrasedRes: any, actionName: string) => {
+    let existingData;
+    try {
+        const userId = ctx.from?.id;
+        const db = await databaseManager.getDatabase();
+
+        if (!db) {
+            throw new Error("Error getting db");
+        }
+
+        const { data: eData, error: iErr } = await db
+            .from("interactions")
+            .select("*")
+            .eq("action_name", actionName)
+            .eq("user_id", userId);
+
+        existingData = eData?.at(-1);
+
+        console.log("Existing interaction: ", existingData);
+
+        if (iErr) {
+            console.log("Error getting interactions: ", iErr);
+        }
+    } catch (err) {
+        console.error(err);
+    }
+
+    try {
+        const userId = ctx.from?.id;
+        const db = await databaseManager.getDatabase();
+
+        if (!db) {
+            throw new Error("Error getting db");
+        }
+
+        const commandCount = existingData?.count || 1;
+
+        const { data: dataUpdate, error } = await db
+            .from("interactions")
+            .upsert({
+                user_id: userId,
+                count: commandCount + 1,
+                action_name: actionName,
+                tokens:
+                    (rephrasedRes?.usage?.input_tokens || 0) +
+                    (rephrasedRes?.usage?.output_tokens || 0),
+            })
+            .eq("user_id", userId)
+            .eq("action_name", actionName);
+
+        if (dataUpdate) console.log("Update user: ", dataUpdate);
+        if (error) console.log("Error update user: ", error);
+    } catch (err) {
+        console.log(err);
+    }
+};

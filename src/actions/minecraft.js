@@ -131,28 +131,30 @@ export default class MinecraftServerHandler {
             return;
         }
 
-        const { data: rows } = await dbClient.from("servers").select("*");
+        const retryCount = 5;
+        for (let i = 0; i < retryCount; i++) {
+            const { data: rows } = await dbClient.from("servers").select("*");
 
-        if (rows?.length > 0) {
-            const serverInfo = rows[0];
-            const instructions = [
-                "Install [Java Runtime Environment](https://www.java.com/en/download/)",
-                "Install [TLauncher](https://tlauncher.org/)",
-                `Download [Mod Pack](${serverInfo?.file_link})`,
-                "Open TLauncher and navigate to the mods menu",
-                "Click the settings button in the top-left corner",
-                "Navigate to the backups section",
-                "Choose 'Restore from file' option",
-                "Select the downloaded mod pack ZIP file",
-                "Click the restore button to install mods",
-                "Launch Minecraft through TLauncher",
-                "Go to Multiplayer menu",
-                `Add server with address: \`${serverInfo?.server_address}\``,
-            ];
+            if (rows?.length > 0) {
+                const serverInfo = rows[0];
+                const instructions = [
+                    "Install [Java Runtime Environment](https://www.java.com/en/download/)",
+                    "Install [TLauncher](https://tlauncher.org/)",
+                    `Download [Mod Pack](${serverInfo?.file_link})`,
+                    "Open TLauncher and navigate to the mods menu",
+                    "Click the settings button in the top-left corner",
+                    "Navigate to the backups section",
+                    "Choose 'Restore from file' option",
+                    "Select the downloaded mod pack ZIP file",
+                    "Click the restore button to install mods",
+                    "Launch Minecraft through TLauncher",
+                    "Go to Multiplayer menu",
+                    `Add server with address: \`${serverInfo?.server_address}\``,
+                ];
 
-            return { instructions, serverInfo };
+                return { instructions, serverInfo };
+            }
         }
-        return null;
     }
 
     async getServerStatus(serverAddress) {

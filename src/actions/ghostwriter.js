@@ -1,11 +1,11 @@
-import { saveHistory } from "../database/db.js";
+import { saveHistory, updateTokensTracking } from "../database/db.js";
 import fs from "fs";
 import os from "os";
 import fetch from "node-fetch";
 import path from "path";
 import { AttachmentBuilder } from "discord.js";
 
-const GHOSTWRITER_SYSTEM_MESSAGE = `
+export const GHOSTWRITER_SYSTEM_MESSAGE = `
     You are a ghostwriter tasked with rephrasing angry or hateful messages into more constructive and less inflammatory language. Your goal is to maintain the core message while removing aggressive tone, insults, and offensive language. Follow these guidelines:
 
     1. Identify the main point or concern in the original message.
@@ -28,6 +28,10 @@ class GhostwriterHandler {
      * @type {import('@slack/bolt').App}
      */
     slackBot;
+    /**
+     * @type {import('openai').OpenAI}
+     */
+    openai;
 
     /**
      * @param {import('telegraf').Telegraf} bot - Telegraf instance
@@ -394,20 +398,6 @@ class GhostwriterHandler {
      */
     async handleVoiceMessage(ctx) {
         const messageUserId = ctx.message.from.id;
-        if (this.messageHash[messageUserId] === 1) {
-            return;
-        }
-
-        // Check if the message is from the user who initiated the command
-        const activeuser = this.activeUsers.get(messageUserId);
-        if (!activeuser || activeuser !== "ghostwriteraudio") {
-            return;
-        }
-
-        // Check if the user has already completed their interaction
-        if (this.messageHash[messageUserId] === 1) {
-            return;
-        }
 
         try {
             await ctx.deleteMessage(this.initialMessagesHash[messageUserId]);
@@ -418,9 +408,6 @@ class GhostwriterHandler {
         } catch (error) {
             console.error(error);
         }
-
-        // Remove user from active users after handling their message
-        this.activeUsers.delete(messageUserId);
     }
 
     async textToSpeech(ctx, text) {
@@ -527,6 +514,17 @@ class GhostwriterHandler {
                 ],
             });
 
+            updateTokensTracking(
+                ctx,
+                {
+                    usage: {
+                        input_tokens: completion.usage?.completion_tokens,
+                        output_tokens: completion.usage?.prompt_tokens,
+                    },
+                },
+                "ghostwriter"
+            );
+
             aiRes = completion.choices[0].message.content;
         } catch (err) {
             console.error(err);
@@ -560,25 +558,13 @@ class GhostwriterHandler {
     /**
     @param {import('telegraf').Context} ctx - Telegraf context
   */
-    async handleTextMessage(ctx) {
+    async handleTextMessage(ctx, actionName) {
         const messageUserId = ctx.message.from.id;
 
-        const activeuser = this.activeUsers.get(messageUserId);
-        console.log("Active user:", activeuser);
-        // Check if the message is from the user who initiated the command
-        if (!activeuser) {
-            return;
-        }
-
-        if (activeuser === "ghostwriterfromtexttoaudio") {
+        if (actionName === "ghostwriterfromtexttoaudio") {
             return this.handleTextWithAudio(ctx);
         }
-        if (activeuser !== "ghostwriter") {
-            return;
-        }
-
-        // Check if the user has already completed their interaction
-        if (this.messageHash[messageUserId] === 1) {
+        if (actionName !== "ghostwriter") {
             return;
         }
 
@@ -597,9 +583,6 @@ class GhostwriterHandler {
         } catch (error) {
             console.error(error);
         }
-
-        // Remove user from active users after handling their message
-        this.activeUsers.delete(messageUserId);
     }
 
     async handleTextWithAudio(ctx) {
@@ -620,9 +603,6 @@ class GhostwriterHandler {
         } catch (error) {
             console.error(error);
         }
-
-        // Remove user from active users after handling their message
-        this.activeUsers.delete(messageUserId);
     }
 
     /**
@@ -662,6 +642,17 @@ class GhostwriterHandler {
                     },
                 ],
             });
+
+            updateTokensTracking(
+                ctx,
+                {
+                    usage: {
+                        input_tokens: completion.usage?.completion_tokens,
+                        output_tokens: completion.usage?.prompt_tokens,
+                    },
+                },
+                "ghostwriter"
+            );
 
             aiRes = completion.choices[0].message.content;
 

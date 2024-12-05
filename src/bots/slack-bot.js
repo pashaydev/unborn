@@ -15,17 +15,12 @@ export default async function startSlackBot(config) {
             botId: Bun.env.SLACK_BOT_ID,
             token: Bun.env.SLACK_BOT_OAUTH_TOKEN,
             signingSecret: Bun.env.SLACK_SIGNING_SECRET,
-            socketMode: true,
             appToken: Bun.env.SLACK_APP_TOKEN,
 
-            customRoutes: [],
-            retryConfig: {
-                retries: 2,
-                factor: 2,
-                randomize: true,
-            },
+            socketMode: true,
 
-            developerMode: true,
+            customRoutes: [],
+            logLevel: "DEBUG",
         });
 
         const anthropic = new Anthropic({
@@ -52,6 +47,9 @@ export default async function startSlackBot(config) {
         (async () => {
             try {
                 await slackBot.start();
+
+                parentPort?.postMessage({ type: "ready", bot: "telegram" });
+
                 console.log("⚡️ Bolt app is running!");
             } catch (error) {
                 console.error("Failed to start Slack app:", error);

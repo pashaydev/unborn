@@ -1,4 +1,4 @@
-import { saveHistory } from "../database/db.js";
+import { saveHistory, updateTokensTracking } from "../database/db.js";
 import { parseOfficeAsync } from "officeparser";
 import * as pdfjsLib from "pdfjs-dist";
 import PDFParser from "../libs/pdf-parser.js";
@@ -210,6 +210,8 @@ export default class DockAsker {
                     },
                 ],
             });
+
+            updateTokensTracking(ctx, msg, "dockasker");
 
             aiRes = msg.content[0].text;
         } catch (err) {

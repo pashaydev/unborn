@@ -19,22 +19,31 @@ test("Database Insert record into the history table", async () => {
     try {
         // Get database instance
         const db = await databaseManager.getDatabase();
+        await db.from("users").insert({
+            user_id: record.userId,
+            from: "test",
+            chat_id: "test",
+        });
 
-        db.from("history").insert({
+        await db.from("history").insert({
             user_input: record.userInput,
             bot_response: record.botResponse,
             user_id: record.userId,
         });
 
-        const res = await db.from("history").select("**").eq("user_id", record.userId);
-        const history = res.data;
+        const res = await db.from("history").select("*").eq("user_id", record.userId);
 
-        console.log("History record:", history);
+        const history = res.data?.[0];
+
+        console.log("History record:", res);
 
         expect(history).toBeTruthy();
         expect(history.user_input).toBe(record.userInput);
         expect(history.bot_response).toBe(record.botResponse);
-        expect(history.user_id).toBe(record.userId);
+        expect(String(history.user_id)).toBe(String(record.userId));
+
+        await db.from("users").delete().eq("user_id", record.userId);
+        await db.from("history").delete().eq("user_id", record.userId);
 
         databaseManager.close();
     } catch (error) {
@@ -111,8 +120,6 @@ test("Slack Bot should have valid token", async () => {
             factor: 2,
             randomize: true,
         },
-
-        developerMode: true,
     });
 
     // Start the app
@@ -126,41 +133,53 @@ test("Slack Bot should have valid token", async () => {
     })();
 });
 
-test("Antropic API response correctly", async () => {
-    const anthropic = new Anthropic({
-        apiKey: Bun.env.ANTHROPIC_API_KEY,
-    });
+test(
+    "Antropic API response correctly",
+    async () => {
+        const anthropic = new Anthropic({
+            apiKey: Bun.env.ANTHROPIC_API_KEY,
+        });
 
-    const response = await anthropic.messages.create({
-        model: "claude-3-5-sonnet-20241022",
-        max_tokens: 1024,
-        messages: [
-            {
-                role: "user",
-                content: "hello",
-            },
-        ],
-    });
+        const response = await anthropic.messages.create({
+            model: "claude-3-5-sonnet-20241022",
+            max_tokens: 1024,
+            messages: [
+                {
+                    role: "user",
+                    content: "hello",
+                },
+            ],
+        });
 
-    expect(response, "Response should exist").toBeTruthy();
-    expect(response.content[0].text, "Response data should exist").toBeString();
-});
+        expect(response, "Response should exist").toBeTruthy();
+        expect(response.content[0].text, "Response data should exist").toBeString();
+    },
+    {
+        timeout: 25_000,
+    }
+);
 
-test("OpenAI API response correctly", async () => {
-    const openai = new OpenAI({ apiKey: Bun.env.OPENAI_API_KEY });
-    const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-            {
-                role: "user",
-                content: "hello",
-            },
-        ],
-    });
+test(
+    "OpenAI API response correctly",
+    async () => {
+        const openai = new OpenAI({ apiKey: Bun.env.OPENAI_API_KEY });
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [
+                {
+                    role: "user",
+                    content: "hello",
+                },
+            ],
+        });
 
-    let aiRes = completion.choices[0].message.content;
-    expect(aiRes, "Response should exist").toBeString();
-});
+        let aiRes = completion.choices[0].message.content;
+        expect(aiRes, "Response should exist").toBeString();
+    },
+    {
+        timeout: 25_000,
+    }
+);
 
 describe("Scrapper", async () => {
     const browserConfig = {

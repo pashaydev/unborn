@@ -1,18 +1,15 @@
 import { AttachmentBuilder } from "discord.js";
-import { saveHistory } from "../database/db.js";
-import fs from "fs";
+import { databaseManager, saveHistory } from "../database/db.js";
+
+import fs from "node:fs";
+import axios from "axios";
+import FormData from "form-data";
 
 export default class ImagegenHandler {
-    /**
-     *
-     * @param {import('telegraf').Telegraf} bot
-     * @param {function} sendMenu
-     */
     constructor(args) {
-        this.telegramBot = args.telegramBot;
-        this.sendMenu = args.sendMenu;
-        this.activeUsers = new Set();
-        this.userInteractions = {};
+        for (const key in args) {
+            this[key] = args[key];
+        }
     }
 
     initAction(ctx) {
@@ -30,8 +27,6 @@ export default class ImagegenHandler {
         console.log("Handling slack command:", this.slackBot);
         const text = body.text;
         const userId = body.user_id;
-
-        this.activeUsers.add(userId);
 
         const innerContext = {
             from: {
@@ -83,13 +78,10 @@ export default class ImagegenHandler {
         } catch (error) {
             console.error("Error in ghostwriter:", error);
         }
-
-        this.activeUsers.delete(userId);
     }
 
     async handleDiscordSlashCommand(interaction, actionName) {
         const userId = interaction.user.id;
-        this.activeUsers.add(userId);
         const inputText = interaction.options.getString("input");
 
         try {
@@ -100,8 +92,7 @@ export default class ImagegenHandler {
 
                 reply: async message => {
                     try {
-                        await interaction.deferReply();
-                        await interaction.editReply(message);
+                        await interaction.channel.send(message);
                     } catch (error) {
                         console.error("Error:", error);
                     }
@@ -113,8 +104,6 @@ export default class ImagegenHandler {
                         await interaction.channel.send({
                             files: [attachment],
                         });
-
-                        await interaction.editReply(inputText);
                     } catch (error) {
                         console.error("Error:", error);
                     }
@@ -126,17 +115,11 @@ export default class ImagegenHandler {
             console.error("Error:", error);
             await interaction.editReply("An error occurred while generating the image");
         }
-
-        this.activeUsers.delete(userId);
     }
 
     async handleTextMessage(ctx) {
         const text = ctx.message.text;
         const userId = ctx.from.id;
-
-        if (!this.activeUsers.has(userId)) {
-            return;
-        }
 
         try {
             ctx.deleteMessage(ctx.message.message_id);
@@ -153,8 +136,6 @@ export default class ImagegenHandler {
         try {
             await ctx.deleteMessage(msg2.message_id);
         } catch {}
-
-        this.activeUsers.delete(userId);
     }
 
     /**
@@ -163,20 +144,7 @@ export default class ImagegenHandler {
      * @returns {void}
      */
     async handleInitAction(ctx) {
-        if (!this.activeUsers) {
-            this.activeUsers = new Set();
-        }
-        const userId = ctx.from.id;
-
-        if (this.userInteractions[userId] && this.userInteractions[userId] >= 5) {
-            await ctx.reply(
-                "You have reached the limit of interactions for this session. Please try again later."
-            );
-            return;
-        }
-
         await ctx.reply("Enter text to generate an image");
-        this.activeUsers.add(userId);
     }
 
     /**
@@ -186,29 +154,44 @@ export default class ImagegenHandler {
      */
     async handleGenerateImage(ctx, text) {
         try {
+            const userId = ctx.from.id;
+            const db = await databaseManager.getDatabase();
+            const { data } = await db
+                .from("interactions")
+                .select("*")
+                .eq("action_name", "imagegen")
+                .eq("user_id", userId)
+                .single();
+
+            const commandCount = data?.count;
+
+            console.log("NODE ENV: ", Bun.env.NODE_ENV);
+            if (Bun.env.NODE_ENV !== "development")
+                if (commandCount > 1) return ctx.reply("You reach your limit for that interaction");
+
             const payload = {
-                text_prompts: [{ text: text }],
-                samples: 2,
-                steps: 40,
+                prompt: text,
+                output_format: "webp",
             };
 
-            const url = `https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image`;
+            const url = `https://api.stability.ai/v2beta/stable-image/generate/core`;
 
-            const response = await fetch(url, {
-                method: "POST",
+            const response = await axios.postForm(url, axios.toFormData(payload, new FormData()), {
+                validateStatus: undefined,
+                responseType: "arraybuffer",
                 headers: {
-                    "Content-Type": "application/json",
-                    Accept: "application/json",
-                    Authorization: `Bearer ${process.env.STABLE_DIFFUSION_API_KEY}`,
+                    Authorization: `Bearer ${Bun.env.STABLE_DIFFUSION_API_KEY}`,
+                    Accept: "image/*",
                 },
-                body: JSON.stringify(payload),
             });
 
-            if (!response.ok) {
-                const error = await response.json();
+            if (response.status !== 200) {
+                const error = `${response.status}: ${response.data.toString()}`;
+
                 console.error("API Error:", error);
+
                 saveHistory({
-                    userId: ctx.userId,
+                    userId: userId,
                     botResponse:
                         "Failed to generate image: " +
                         error.message +
@@ -216,20 +199,14 @@ export default class ImagegenHandler {
                         ctx.from.username,
                     userInput: text,
                 });
+
                 await ctx.reply("Failed to generate image");
+
                 return;
             }
 
-            const responseData = await response.json();
-            const base64Image = responseData.artifacts[0].base64;
-            const imageBuffer = Buffer.from(base64Image, "base64");
+            const imageBuffer = Buffer.from(response.data);
             await ctx.replyWithPhoto({ source: imageBuffer });
-
-            if (typeof this.userInteractions[ctx.userId] === "undefined") {
-                this.userInteractions[ctx.userId] = 0;
-            }
-
-            this.userInteractions[ctx.userId]++;
 
             saveHistory({
                 userId: ctx.userId,
@@ -239,6 +216,17 @@ export default class ImagegenHandler {
                     " Stable diffusion: Image generated successfully",
                 userInput: text,
             });
+
+            const { data: dataUpdate, error } = await db
+                .from("interactions")
+                .upsert({
+                    user_id: userId,
+                    count: (commandCount || 1) + 1,
+                    action_name: "imagegen",
+                })
+                .eq("user_id", userId);
+
+            if (dataUpdate) console.log("Update user: ", dataUpdate);
         } catch (error) {
             console.error("Error:", error);
             await ctx.reply("An error occurred while generating the image");

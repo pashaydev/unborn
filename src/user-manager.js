@@ -3,7 +3,6 @@ import { databaseManager } from "./database/db";
 class UserManager {
     /**
      * @type {Object.<string, Action>}
-     * @private
      * */
     constructor() {
         this.instance = {};
@@ -148,12 +147,7 @@ class UserManager {
      */
     async getUser(chatId, userId) {
         const db = await databaseManager.getDatabase();
-        const { data, error } = await db
-            .from("users")
-            .select("*")
-            .eq("chat_id", chatId)
-            .eq("user_id", userId)
-            .single();
+        const { data, error } = await db.from("users").select("*").eq("user_id", userId).single();
 
         if (error) {
             console.error("Error fetching user:", error);

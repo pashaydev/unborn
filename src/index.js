@@ -1,5 +1,6 @@
 import { join } from "path";
 import WorkerManager from "./workers/worker-manager.js";
+import { startHttpServer } from "./backend/server.ts";
 
 // Get current directory and create worker paths
 const currentDir = import.meta.dir;
@@ -18,15 +19,10 @@ const config = {
     type: "start",
 };
 
-// Create worker managers
+// Create worker managers, each worker in the separate thread, working throw web sockets
 const telegramWorkerManager = new WorkerManager(telegramWorkerPath, config);
 const discordWorkerManager = new WorkerManager(discordWorkerPath, config);
 const slackWorkerManager = new WorkerManager(slackWorkerPath, config);
 
-// Implement periodic health check
-setInterval(() => {
-    const workers = [telegramWorkerManager, discordWorkerManager, slackWorkerManager];
-    workers.forEach(worker => {
-        worker.postMessage({ type: "healthCheck" });
-    });
-}, 60000);
+// Http server
+startHttpServer(config);

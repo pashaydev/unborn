@@ -21,6 +21,7 @@ class ActionManager {
         "scrapper",
         "story",
         "minecraft",
+        "scrapperrecursive",
     ];
 
     /**
@@ -64,6 +65,7 @@ class ActionManager {
         for (let action of this.#implementedActions) {
             try {
                 const actionInstance = this.createAction(action);
+
                 this.actions[action] = actionInstance;
             } catch (error) {
                 console.error("Error creating action instance:", error);
@@ -122,6 +124,7 @@ class ActionManager {
 
         const chessHandler = this.getActionInstance("chess");
         // Register action handlers
+        // Chess game
         this.slackBot.action(/move_.+/, async args => {
             await chessHandler.handleSlackAction(args);
         });
@@ -129,22 +132,47 @@ class ActionManager {
         this.slackBot.action(/page_.+/, async args => {
             await chessHandler.handleSlackAction(args);
         });
-
         this.slackBot.action("resign", async args => {
             await chessHandler.handleSlackAction(args);
-            this.userManager.updateInstance({
-                chatId: context.payload.channel,
-                userId: context.context.userId,
-                data: {
-                    activeFunction: null,
-                    from: "slack",
-                    username: context?.payload?.username,
-                },
-            });
         });
-
         this.slackBot.action("dummy_action", async args => {
             await chessHandler.handleSlackAction(args);
+        });
+
+        // Storyteller
+        const storyteller = this.getActionInstance("story");
+
+        // // Handle button clicks
+        this.slackBot.action(/^(genre_|choice_)/, async context => {
+            await context.ack();
+            await storyteller.handleSlackAction(context);
+        });
+
+        this.slackBot.use(async ({ event, next }) => {
+            console.log("Incoming event:", event);
+            await next();
+        });
+
+        this.slackBot.message("", async ({ event, body, client }) => {
+            console.log("Slack message:", event, body);
+
+            try {
+                // Check if it's a regular message with text
+                if (event.type === "message" && event.text && !event.subtype) {
+                    console.log("Processing text message:", event.text);
+                    const storyteller = this.actionManager.getActionInstance("story");
+                    const chat = storyteller.getCurrentChat(event.user);
+                    if (chat && chat.isContextMessage) {
+                        await storyteller.handleTextMessage({
+                            message: event,
+                            client: this.slackBot.client,
+                            channel: event.channel,
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error("Error handling message:", error);
+            }
         });
     }
 
@@ -253,8 +281,9 @@ class ActionManager {
             });
 
             // Register Telegram command handlers
-            this.telegramBot.command(action, ctx => {
+            this.telegramBot.command(action, async ctx => {
                 console.log("Telegram Command:", action);
+
                 actionInstance.initCommand(ctx, action);
 
                 this.userManager.updateInstance({
@@ -361,7 +390,7 @@ class ActionManager {
                 if (activeFunction) {
                     const actionInstance = this.getActionInstance(activeFunction);
                     if (actionInstance && "handleTextMessage" in actionInstance) {
-                        actionInstance.handleTextMessage(ctx);
+                        actionInstance.handleTextMessage(ctx, activeFunction);
                     }
 
                     if (command?.once) {
@@ -396,7 +425,7 @@ class ActionManager {
 
                 if (activeFunction) {
                     const actionInstance = this.getActionInstance(activeFunction);
-                    actionInstance?.handleVoiceMessage(ctx);
+                    await actionInstance?.handleVoiceMessage(ctx);
 
                     if (command?.once) {
                         this.userManager.updateInstance({
@@ -463,19 +492,25 @@ class ActionManager {
             userManager: this.userManager,
         };
 
-        if (actionName === "scrapper") return new ScrapperHandler(args);
-        if (actionName === "dockasker") return new DockAsker(args);
-        if (actionName === "reddit") return new RedditHandler(args);
-        if (actionName === "chess") return new ChessGameHandler(args);
-        if (actionName === "imagegen") return new ImagegenHandler(args);
-        if (actionName === "minecraft") return new MinecraftServerHandler(args);
-        if (actionName === "story") return new StoryTellingHandler(args);
+        const handler = {
+            scrapper: ScrapperHandler,
+            dockasker: DockAsker,
+            reddit: RedditHandler,
+            chess: ChessGameHandler,
+            imagegen: ImagegenHandler,
+            minecraft: MinecraftServerHandler,
+            story: StoryTellingHandler,
+            ghostwriter: GhostwriterHandler,
+            ghostwriteraudio: GhostwriterHandler,
+            ghostwriterfromtexttoaudio: GhostwriterHandler,
+            scrapperrecursive: ScrapperHandler,
+        };
 
-        if (actionName.includes("ghostwriter")) {
-            if (!this.actions["ghostwriter"]) {
-                this.actions["ghostwriter"] = new GhostwriterHandler(args);
-            }
-            return this.actions["ghostwriter"];
+        const Entity = handler[actionName];
+
+        console.log("Create action", actionName, Entity);
+        if (Entity) {
+            return new Entity(args);
         }
     }
 }
