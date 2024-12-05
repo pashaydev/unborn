@@ -32,8 +32,6 @@ This project is a Bun.js application running bot in telegram,discord,slack
     export SECRET_PATH=your-secret-path-or-empty
     export STABLE_DIFFUSION_API_KEY=your-api-key
     export DISCORD_APP_ID=your-discord-app-id
-    export GCS_BUCKET_NAME=your-google-claude-storage-name
-    export GCS_KEY_FILE=json-gcs-file
     export SLACK_SIGNING_SECRET=your-slack-signing-secret
     export SLACK_BOT_ID=your-slack-app-id
     export SLACK_APP_TOKEN=your-slack-app-token
@@ -72,7 +70,3 @@ npm test
 npm run docker:build
 
 ```
-
-## Screenshoots
-
-<img width="1512" alt="123" src="https://github.com/user-attachments/assets/2fd33500-09fd-42ff-8bfa-12ae68f99d0a">
