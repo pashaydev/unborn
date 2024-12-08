@@ -239,13 +239,8 @@ export default class ChessGameHandler {
             await this.executeMove(gameState, text, ctx);
             await this.handleAIResponse(gameState, ctx);
         } else {
-            await ctx.reply(
-                `${this.parseMoveToReadable(
-                    text,
-                    gameState,
-                    gameState.playerColor
-                )}, is not valid move!`
-            );
+            const msg = this.parseMoveToReadable(text, gameState, gameState.playerColor);
+            if (msg) await ctx.reply(msg);
         }
     }
 
@@ -947,10 +942,14 @@ export default class ChessGameHandler {
             const toSquare = this.getSquareFromNotation(toFile + toRank, color);
 
             if (!fromSquare || !toSquare) {
-                return "Invalid move";
+                return "";
             }
 
-            const piece = gameState.board[fromSquare[0]][fromSquare[1]];
+            const piece = gameState.board[fromSquare?.[0]]?.[fromSquare?.[1]];
+
+            if (!piece) {
+                return "";
+            }
 
             // Find the piece name by checking both WHITE and BLACK pieces
             let pieceName = null;

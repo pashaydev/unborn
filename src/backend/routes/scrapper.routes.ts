@@ -12,7 +12,10 @@ export const scrapperRoutes = (deps: {
     new Elysia()
         .get(
             "recursive-scrapping",
-            async ({ query: { query }, authenticate }) => {
+            async request => {
+                const { query } = request.query;
+                const authenticate = (request as any).authenticate;
+
                 await authenticate();
 
                 const scrapper = new ScrapperHandler({
@@ -36,7 +39,10 @@ export const scrapperRoutes = (deps: {
         )
         .get(
             "scrapping",
-            async ({ query: { query }, authenticate }) => {
+            async request => {
+                const { query } = request.query;
+                const authenticate = (request as any).authenticate;
+
                 const user = await authenticate();
 
                 const scrapper = new ScrapperHandler({

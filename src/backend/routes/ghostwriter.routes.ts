@@ -2,7 +2,7 @@ import { Elysia, t } from "elysia";
 import type Anthropic from "@anthropic-ai/sdk";
 import type OpenAI from "openai";
 import type UserManager from "../../user-manager";
-import type { Context } from "telegraf";
+import type { Context, Telegraf } from "telegraf";
 import GhostwriterHandler, { GHOSTWRITER_SYSTEM_MESSAGE } from "../../actions/ghostwriter";
 import { saveHistory, updateTokensTracking } from "../../database/db";
 
@@ -14,7 +14,11 @@ export const ghostwriterRoutes = (deps: {
     new Elysia()
         .get(
             "ghostwriter",
-            async ({ query: { phrase }, authenticate }) => {
+
+            async request => {
+                const query = request.query;
+                const phrase = query.phrase;
+                const authenticate = (request as any).authenticate;
                 const user = await authenticate();
 
                 const handler = new GhostwriterHandler({
@@ -49,9 +53,10 @@ export const ghostwriterRoutes = (deps: {
         )
         .post(
             "ghostwriteraudio",
-            async ({ body, authenticate }) => {
+            async request => {
+                const body = request.body;
+                const authenticate = (request as any).authenticate;
                 const user = await authenticate();
-                // const handler = new GhostwriterHandler({ ...deps });
 
                 if (!body.file) {
                     throw new Error("No audio file provided");
@@ -142,9 +147,10 @@ export const ghostwriterRoutes = (deps: {
         )
         .post(
             "ghostwritertext",
-            async ({ body, authenticate }) => {
+            async request => {
+                const body = request.body;
+                const authenticate = (request as any).authenticate;
                 const user = await authenticate();
-                // const handler = new GhostwriterHandler({ ...deps });
 
                 try {
                     const { text } = body;
@@ -181,7 +187,7 @@ export const ghostwriterRoutes = (deps: {
                             from: {
                                 id: user.user_id,
                             },
-                        },
+                        } as Context,
                         {
                             usage: {
                                 input_tokens: completion.usage?.completion_tokens,
@@ -195,7 +201,7 @@ export const ghostwriterRoutes = (deps: {
                     const mp3 = await deps.openai.audio.speech.create({
                         model: "tts-1",
                         voice: "alloy", // Can be made configurable: alloy, echo, fable, onyx, nova, shimmer
-                        input: rephrasedText,
+                        input: rephrasedText!,
                     });
 
                     // Convert audio to Buffer
@@ -205,7 +211,7 @@ export const ghostwriterRoutes = (deps: {
                     await saveHistory({
                         userId: user.user_id,
                         userInput: text,
-                        botResponse: rephrasedText,
+                        botResponse: rephrasedText!,
                     });
 
                     // Return both text and audio

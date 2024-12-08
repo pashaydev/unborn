@@ -1,10 +1,14 @@
 import { Elysia, t } from "elysia";
-import { databaseManager, saveHistory, updateTokensTracking } from "../../database/db";
+import { databaseManager } from "../../database/db";
+import { JWTOption } from "@elysiajs/jwt";
 
 export const authRoutes = new Elysia()
     .post(
         "/signup",
-        async ({ body, jwt }) => {
+        async request => {
+            const body = request.body;
+            const jwt = (request as any).jwt;
+
             const { username, password, repeatPassword: pass2 } = body;
 
             if (password !== pass2) throw new Error("Passwords do not match");
@@ -65,7 +69,9 @@ export const authRoutes = new Elysia()
     )
     .post(
         "/login",
-        async ({ body, jwt }) => {
+        async request => {
+            const body = request.body;
+            const jwt = (request as any).jwt;
             const { username, password } = body;
             const db = await databaseManager.getDatabase();
 

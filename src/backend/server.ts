@@ -1,4 +1,4 @@
-import { Elysia } from "elysia";
+import { Elysia, InferContext } from "elysia";
 import { swagger } from "@elysiajs/swagger";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
@@ -33,6 +33,8 @@ export const startHttpServer = async (config: any) => {
             .use(scrapperRoutes({ anthropic, openai, userManager }))
             .use(ghostwriterRoutes({ anthropic, openai, userManager }))
             .listen(Bun.env.PORT || 3000);
+
+        type Context = InferContext<typeof app>;
 
         console.log(`🦊 Server is running at ${app.server?.hostname}:${app.server?.port}`);
     } catch (err) {

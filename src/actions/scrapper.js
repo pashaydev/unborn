@@ -2,6 +2,38 @@ import puppeteer from "puppeteer";
 import { updateTokensTracking } from "../database/db";
 import { timeout } from "puppeteer";
 
+const markdownToTelegramHTML = markdown => {
+    if (!markdown) return "";
+
+    let text = markdown;
+
+    // Escape special HTML characters
+    text = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+    // Bold: **text** or __text__ to <b>text</b>
+    text = text.replace(/(\*\*|__)(?=\S)([^\r]*?\S[*_]*)\1/g, "<b>$2</b>");
+
+    // Italic: *text* or _text_ to <i>text</i>
+    text = text.replace(/(\*|_)(?=\S)([^\r]*?\S)\1/g, "<i>$2</i>");
+
+    // Strikethrough: ~~text~~ to <s>text</s>
+    text = text.replace(/~~(?=\S)([^\r]*?\S)~~/g, "<s>$1</s>");
+
+    // Code: `text` to <code>text</code>
+    text = text.replace(/`([^`]+)`/g, "<code>$1</code>");
+
+    // Pre: ```text``` to <pre>text</pre>
+    text = text.replace(/```([^`]+)```/g, "<pre>$1</pre>");
+
+    // Links: [text](url) to <a href="url">text</a>
+    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+
+    // Line breaks
+    text = text.replace(/\n/g, "\n");
+
+    return text;
+};
+
 class ScrapperHandler {
     /**
      * @type {import("telegraf").Telegraf}
@@ -318,7 +350,13 @@ class ScrapperHandler {
                 html = messages;
             }
 
-            ctx.replyWithHTML(html);
+            if (this.telegramBot) {
+                this.telegramBot.telegram.sendMessage(ctx.chat.id, html, {
+                    parse_mode: "Markdown",
+                });
+            } else {
+                ctx.replyWithHTML(html);
+            }
         } catch (error) {
             console.error("Failed to generate response:", error);
             ctx.reply(html);
@@ -335,7 +373,7 @@ class ScrapperHandler {
      * @description Handles scrapper action
      */
     async handleScrapperRecursive(ctx) {
-        ctx.reply("This will take a long time to proceed every inner link...");
+        const initMessage = await ctx.reply("Loading...");
 
         const activeSearches = this.activeSearches.length;
 
@@ -431,14 +469,28 @@ class ScrapperHandler {
             );
 
             const messages = completion.choices[0].message.content;
+
             if (messages) {
                 html = messages;
             }
 
-            ctx.replyWithHTML(html);
+            if (this.telegramBot) {
+                this.telegramBot.telegram.sendMessage(ctx.chat.id, html, {
+                    parse_mode: "Markdown",
+                });
+            } else {
+                ctx.replyWithHTML(html);
+            }
         } catch (error) {
             console.error("Failed to generate response:", error);
             ctx.reply(html);
+        }
+
+        try {
+            if (this.telegramBot)
+                await this.telegramBot.telegram.deleteMessage(ctx.chat.id, initMessage.message_id);
+        } catch (err) {
+            console.log(err);
         }
 
         this.activeSearches = this.activeSearches.filter(id => id !== ctx.from.id);

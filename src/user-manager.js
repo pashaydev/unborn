@@ -14,9 +14,10 @@ class UserManager {
      * @param {string} params.userId
      * @param {string} params.from
      * @param {string} params.username
+     * @param {string} params.active_command
      * @returns {Promise<Object>}
      * */
-    async createUser({ chatId, userId, from, username }) {
+    async createUser({ chatId, userId, from, username, active_command }) {
         const db = await databaseManager.getDatabase();
         const { data, error } = await db
             .from("users")
@@ -25,7 +26,9 @@ class UserManager {
                 user_id: userId,
                 from: from,
                 username: username,
+                active_command,
             })
+            .select("*")
             .single();
 
         if (error) {
@@ -36,6 +39,9 @@ class UserManager {
         if (!this.instance[chatId]) {
             this.instance[chatId] = {};
         }
+
+        console.log("User created successfully: ", data);
+
         this.instance[chatId][userId] = data;
 
         return data;
@@ -57,14 +63,14 @@ class UserManager {
             userId: userId,
             from: data.from,
             username: data.username,
-            activeFunction: data.activeFunction,
+            active_command: data.activeFunction,
         };
 
         if (data.username) query.username = data.username;
         if (data.from) query.from = data.from;
         if (data.user_id) query.user_id = data.user_id;
         if (data.chat_id) query.chat_id = data.chat_id;
-        query.active_command = data.activeFunction;
+        if (data.activeFunction) query.active_command = data.activeFunction;
 
         try {
             // First, check if the user exists
@@ -75,11 +81,12 @@ class UserManager {
                 .single();
 
             if (checkError) {
+                console.log("Error getting existing user: ", checkError.message);
                 return this.createUser(_user);
             }
 
             // Update the user
-            console.log("Updating user", userId, query);
+            console.log("Query for update user: ", userId, query);
             const { error: updateError } = await db
                 .from("users")
                 .update(query)
