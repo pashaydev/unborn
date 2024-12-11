@@ -1,5 +1,5 @@
 import puppeteer from "puppeteer";
-import { updateTokensTracking } from "../database/db";
+import { databaseManager, updateTokensTracking } from "../database/db";
 import { timeout } from "puppeteer";
 
 const markdownToTelegramHTML = markdown => {
@@ -113,8 +113,8 @@ class ScrapperHandler {
                 response = await this.handleScrapper(
                     {
                         from: {
-                            username: "web",
-                            id: "web",
+                            username: user?.username || "web",
+                            id: user?.user_id || "web",
                         },
                         message: {
                             text: query,
@@ -242,6 +242,42 @@ class ScrapperHandler {
         ctx.reply("scrapping web...");
 
         const activeSearches = this.activeSearches.length;
+        const userId = ctx.from.id;
+        let commandCount = 1;
+        const db = await databaseManager.getDatabase();
+
+        try {
+            const { data, error } = await db
+                .from("interactions")
+                .select("*")
+                .eq("action_name", "scrapper")
+                .eq("user_id", userId)
+                .order("id", { ascending: false });
+
+            if (error) {
+                throw error;
+            }
+
+            commandCount = data?.[0]?.count || 1;
+        } catch (err) {
+            console.log(err);
+        }
+
+        try {
+            const { data: dataUpdate, error } = await db
+                .from("interactions")
+                .upsert({
+                    user_id: userId,
+                    count: commandCount + 1,
+                    action_name: "scrapper",
+                })
+                .select("*")
+                .eq("user_id", userId);
+
+            console.log("Update interaction: ", dataUpdate, error);
+        } catch (err) {
+            console.log(err);
+        }
 
         console.log("Active searches:", activeSearches);
 
@@ -376,6 +412,33 @@ class ScrapperHandler {
         const initMessage = await ctx.reply("Loading...");
 
         const activeSearches = this.activeSearches.length;
+        const userId = ctx.from.id;
+
+        try {
+            const db = await databaseManager.getDatabase();
+
+            const { data } = await db
+                .from("interactions")
+                .select("*")
+                .eq("action_name", "scrapperrecursive")
+                .eq("user_id", userId)
+                .single();
+
+            const commandCount = data?.count;
+
+            const { data: dataUpdate, error } = await db
+                .from("interactions")
+                .upsert({
+                    user_id: userId,
+                    count: (commandCount || 1) + 1,
+                    action_name: "scrapperrecursive",
+                })
+                .eq("user_id", userId);
+
+            console.log("Update interaction: ", dataUpdate, error);
+        } catch (err) {
+            console.log(err);
+        }
 
         console.log("Active searches:", activeSearches);
 

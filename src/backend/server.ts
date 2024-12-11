@@ -7,6 +7,9 @@ import { scrapperRoutes } from "./routes/scrapper.routes";
 import UserManager from "../user-manager";
 import { authMiddleware } from "./auth/midlleware";
 import { ghostwriterRoutes } from "./routes/ghostwriter.routes";
+import { createUiRotes } from "./routes/ui.routes";
+import html from "@elysiajs/html";
+import staticPlugin from "@elysiajs/static";
 
 export const startHttpServer = async (config: any) => {
     const anthropic = new Anthropic({ apiKey: config.ANTHROPIC_API_KEY });
@@ -14,10 +17,13 @@ export const startHttpServer = async (config: any) => {
     const userManager = new UserManager();
 
     try {
+        const deps = { anthropic, openai, userManager };
         const app = new Elysia({
             serve: { idleTimeout: 255 },
         })
             .use(authMiddleware)
+            .use(html())
+            .use(staticPlugin())
             .use(
                 swagger({
                     documentation: {
@@ -30,8 +36,9 @@ export const startHttpServer = async (config: any) => {
                 })
             )
             .use(authRoutes)
-            .use(scrapperRoutes({ anthropic, openai, userManager }))
-            .use(ghostwriterRoutes({ anthropic, openai, userManager }))
+            .use(scrapperRoutes(deps))
+            .use(ghostwriterRoutes(deps))
+            .use(createUiRotes(deps))
             .listen(Bun.env.PORT || 3000);
 
         type Context = InferContext<typeof app>;

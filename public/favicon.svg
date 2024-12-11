@@ -1,0 +1,29 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <!-- Magnifying Glass Handle -->
+    <line x1="135" y1="135" x2="180" y2="180"
+        stroke="#60a5fa"
+        stroke-width="12"
+        stroke-linecap="round" />
+
+    <!-- Glass Circle -->
+    <circle cx="90" cy="90" r="60"
+        fill="none"
+        stroke="#60a5fa"
+        stroke-width="8" />
+
+    <!-- Network Nodes -->
+    <circle cx="70" cy="70" r="4" fill="#4299E1" />
+    <circle cx="110" cy="90" r="4" fill="#4299E1" />
+    <circle cx="80" cy="110" r="4" fill="#4299E1" />
+
+    <!-- Network Lines -->
+    <line x1="70" y1="70" x2="110" y2="90"
+        stroke="#4299E1"
+        stroke-width="2" />
+    <line x1="110" y1="90" x2="80" y2="110"
+        stroke="#4299E1"
+        stroke-width="2" />
+    <line x1="80" y1="110" x2="70" y2="70"
+        stroke="#4299E1"
+        stroke-width="2" />
+</svg>

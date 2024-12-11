@@ -1,0 +1,13 @@
+{
+    "extends": "../../tsconfig.base.json",
+    "compilerOptions": {
+        "outDir": "../../public",
+        "rootDir": ".",
+        "composite": true,
+        // Frontend-specific options
+        "lib": ["dom", "es6"],
+        "jsx": "react"
+    },
+    "include": ["./**/*.ts", "./**/*.tsx"],
+    "exclude": ["node_modules"]
+}

@@ -1,15 +1,16 @@
 import { Elysia, t } from "elysia";
 import { databaseManager } from "../../database/db";
-import { JWTOption } from "@elysiajs/jwt";
 
 export const authRoutes = new Elysia()
     .post(
-        "/signup",
+        "/api/signup",
         async request => {
             const body = request.body;
             const jwt = (request as any).jwt;
 
-            const { username, password, repeatPassword: pass2 } = body;
+            const { username, password, repeatPassword: pass2, email } = body;
+
+            const ip = request.headers["x-forwarded-for"];
 
             if (password !== pass2) throw new Error("Passwords do not match");
 
@@ -22,29 +23,43 @@ export const authRoutes = new Elysia()
                 cost: 4,
             });
 
-            const { data: existingUser } = await db
+            const { data: existingUserByUsername } = await db
                 .from("users")
                 .select("*")
                 .eq("username", username)
                 .single();
 
-            const userId = existingUser?.user_id || String(Math.floor(Math.random() * 1000000));
+            if (existingUserByUsername) {
+                return new Error("User with this username already exists");
+            }
+
+            const { data: existingUserByIp } = await db
+                .from("users")
+                .select("*")
+                .eq("ip", ip)
+                .single();
+
+            if (existingUserByIp) {
+                return new Error("IP should be unique");
+            }
+
+            const userId = String(Math.floor(Math.random() * 1000000));
             const userData = {
                 username,
                 user_id: userId,
                 hash_pass: bcryptHash,
                 from: "web",
                 chat_id: userId,
+                email,
+                ip,
             };
 
-            const { data: user, error } = existingUser
-                ? await db.from("users").update(userData).eq("user_id", userId).select("*").single()
-                : await db
-                      .from("users")
-                      .insert(userData)
-                      .filter("user_id", "eq", userId)
-                      .select("*")
-                      .single();
+            const { data: user, error } = await db
+                .from("users")
+                .insert(userData)
+                .filter("user_id", "eq", userId)
+                .select("*")
+                .single();
 
             if (error) throw new Error(error.message);
 
@@ -59,6 +74,7 @@ export const authRoutes = new Elysia()
             body: t.Object({
                 username: t.String(),
                 password: t.String(),
+                email: t.String(),
                 repeatPassword: t.String(),
             }),
             detail: {
@@ -68,7 +84,7 @@ export const authRoutes = new Elysia()
         }
     )
     .post(
-        "/login",
+        "/api/login",
         async request => {
             const body = request.body;
             const jwt = (request as any).jwt;

@@ -70,7 +70,8 @@ class UserManager {
         if (data.from) query.from = data.from;
         if (data.user_id) query.user_id = data.user_id;
         if (data.chat_id) query.chat_id = data.chat_id;
-        if (data.activeFunction) query.active_command = data.activeFunction;
+        // Required to be like that in order to clean properly
+        query.active_command = data.activeFunction || "";
 
         try {
             // First, check if the user exists

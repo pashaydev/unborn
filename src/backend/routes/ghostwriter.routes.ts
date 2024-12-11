@@ -2,7 +2,7 @@ import { Elysia, t } from "elysia";
 import type Anthropic from "@anthropic-ai/sdk";
 import type OpenAI from "openai";
 import type UserManager from "../../user-manager";
-import type { Context, Telegraf } from "telegraf";
+import type { Context } from "telegraf";
 import GhostwriterHandler, { GHOSTWRITER_SYSTEM_MESSAGE } from "../../actions/ghostwriter";
 import { saveHistory, updateTokensTracking } from "../../database/db";
 
