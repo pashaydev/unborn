@@ -38,18 +38,17 @@ export const App = () => {
                     results: result,
                 });
             } else {
-                const error = await response.json();
-                if (error.message === "InteractionLimit") {
+                if (response.status === 401) {
+                    navigation("/ui-login");
+                }
+
+                if (response.status === 429) {
                     throw new Error(
                         "You have reached the interaction limit. Please try again later."
                     );
                 }
 
-                if (error.message === "Not authorize") {
-                    navigation("/ui-login");
-                }
-
-                throw new Error(error.message);
+                throw new Error(error.statusText);
             }
         } catch (err) {
             setError(err.message || "An error occurred during quick search. Please try again.");
@@ -99,35 +98,37 @@ export const App = () => {
 
     const isButtonDisabled = searchQuery.length < 3;
 
-    const markedLib = useRef();
+    const markedLib = useRef(null);
 
     useEffect(() => {
         const init = async () => {
-            const { marked } = await import("marked");
-            markedLib.current = marked;
+            try {
+                document.title = "Scrapper";
+                tippy("[data-tippy-content]");
 
-            const response = await fetch("api/search-history", {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-                },
-            });
-            const history = (await response.json()) || [];
-            setSearchHistory(
-                history.map(hR => {
-                    return {
-                        query: hR.query,
-                        type: hR.action_name === "scrapper" ? "quick" : "deep",
-                        timestamp: new Date(hR.created_at).getTime(),
-                        results: hR.results,
-                    };
-                })
-            );
+                const { marked } = await import("marked");
+                markedLib.current = marked;
 
-            // set title
-            document.title = "Scrapper";
+                const response = await fetch("api/search-history", {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+                    },
+                });
+                const history = (await response.json()) || [];
+                setSearchHistory(
+                    history.map(hR => {
+                        return {
+                            query: hR.query,
+                            type: hR.action_name === "scrapper" ? "quick" : "deep",
+                            timestamp: new Date(hR.created_at).getTime(),
+                            results: hR.results,
+                        };
+                    })
+                );
+            } catch (err) {
+                console.error(err);
+            }
         };
-
-        tippy("[data-tippy-content]");
 
         init();
     }, []);
