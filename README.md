@@ -65,7 +65,10 @@ This project is a full-stack Bun.js application featuring:
 Start the backend and bots in development mode with inspector:
 
 ```sh
+# backend app & bots
 npm run dev
+# frontend
+vite build --watch
 ```
 
 Start the backend and bots in production mode:
@@ -77,7 +80,7 @@ npm run start
 Build the frontend:
 
 ````sh
-npm run build:client or vite build --watch
+npm run build:client
 ```
 
 The application will be available at:
