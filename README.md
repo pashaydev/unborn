@@ -11,7 +11,7 @@ This project is a full-stack Bun.js application featuring:
 
 -   `/api/*` - REST API endpoints
 -   `/ui/*` - Frontend React application
--   Bot webhooks for Telegram, Discord, and Slack
+-   Each bot working in separate thread via web socket
 
 ## Installation
 
@@ -119,10 +119,6 @@ Build the Docker image:
 ```sh
 npm run docker:build
 ```
-
-## Screenshots
-
-<img width="1512" alt="123" src="https://github.com/user-attachments/assets/2fd33500-09fd-42ff-8bfa-12ae68f99d0a">
 
 ## Tech Stack
 
