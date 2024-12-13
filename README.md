@@ -62,24 +62,22 @@ This project is a full-stack Bun.js application featuring:
 
 ## Development
 
-Start the backend and bots:
+Start the backend and bots in development mode with inspector:
+
+```sh
+npm run dev
+```
+
+Start the backend and bots in production mode:
 
 ```sh
 npm run start
 ```
 
-## Development
+Build the frontend:
 
-Start the backend and bots:
-
-```sh
-npm run start
-```
-
-Start the frontend development server:
-
-```sh
-npm run dev:ui
+````sh
+npm run build:client or vite build --watch
 ```
 
 The application will be available at:
@@ -146,3 +144,4 @@ npm run docker:build
     -   OpenAI
     -   Anthropic
     -   Stable Diffusion
+````
