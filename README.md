@@ -79,7 +79,7 @@ npm run start
 
 Build the frontend:
 
-````sh
+```sh
 npm run build:client
 ```
 
@@ -147,4 +147,7 @@ npm run docker:build
     -   OpenAI
     -   Anthropic
     -   Stable Diffusion
-````
+
+```
+
+```
