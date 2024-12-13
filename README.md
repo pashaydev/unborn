@@ -147,7 +147,3 @@ npm run docker:build
     -   OpenAI
     -   Anthropic
     -   Stable Diffusion
-
-```
-
-```
