@@ -4,6 +4,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type OpenAI from "openai";
 import type UserManager from "../../user-manager";
 import { databaseManager } from "../../database/db";
+import axios from "axios";
 
 const handleSearch = async ({ query, deps, isDeep = false, user, error }) => {
     const { q } = query;
@@ -196,4 +197,15 @@ export const scrapperRoutes = (deps: {
                     tags: ["Web Scrapping"],
                 },
             }
-        );
+        )
+        .get("/api/suggestions", async ({ error, query }) => {
+            try {
+                const searchTerm = query.q;
+                const response = await axios.get(
+                    `http://suggestqueries.google.com/complete/search?output=toolbar&hl=en&q=${searchTerm}&gl=uk`
+                );
+                return response.data;
+            } catch (error) {
+                return error(500, "Failed to fetch suggestions");
+            }
+        });

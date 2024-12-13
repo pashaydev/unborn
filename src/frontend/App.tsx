@@ -138,6 +138,23 @@ export const App = () => {
         setSearchQuery(hR.query);
     };
 
+    const [suggestions, setSuggestions] = useState([]);
+
+    const getSuggestions = e => {
+        const searchTerm = e.target.value;
+
+        fetch(`/api/suggestions?q=${searchTerm}`).then(response => {
+            return response.text().then(xmlString => {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlString, "application/xml");
+                const suggestionsArray = Array.from(xmlDoc.getElementsByTagName("suggestion")).map(
+                    suggestion => suggestion.getAttribute("data")
+                );
+                setSuggestions(suggestionsArray);
+            });
+        });
+    };
+
     return (
         <div className="bg-black w-full min-h-screen text-gray-100">
             <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
@@ -151,9 +168,10 @@ export const App = () => {
                             <div className="flex flex-col sm:flex-row gap-3 search-buttons-container">
                                 <div className="relative flex-1">
                                     <textarea
+                                        tabIndex={2}
                                         onKeyDown={e => {
                                             const key = e.key;
-                                            if (key === "Enter" && e.ctrlKey) {
+                                            if (key === "Enter" && (e.metaKey || e.ctrlKey)) {
                                                 handleSubmit(e, "quick");
                                             }
                                         }}
@@ -168,11 +186,38 @@ export const App = () => {
                                             e.target.style.height = "auto";
                                         }}
                                         value={searchQuery}
-                                        onChange={e => setSearchQuery(e.target.value)}
+                                        onChange={e => {
+                                            getSuggestions(e);
+                                            setSearchQuery(e.target.value);
+                                        }}
                                         className="search-input w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-sm sm:text-base transition-all duration-200"
                                         placeholder="Enter your search query..."
                                         required
                                     />
+
+                                    <div className="">
+                                        {suggestions.map((suggestion, idx) => {
+                                            return (
+                                                <button
+                                                    tabIndex={2 + idx}
+                                                    onClick={() => {
+                                                        setSearchQuery(suggestion);
+                                                        setSuggestions([]);
+                                                    }}
+                                                    onKeyDown={e => {
+                                                        const key = e.key;
+                                                        if (key === "Enter") {
+                                                            setSearchQuery(suggestion);
+                                                            setSuggestions([]);
+                                                        }
+                                                    }}
+                                                    className="cursor-pointer transition-all hover:bg-slate-400 text-sm rounded-sm px-2 py-1.5"
+                                                    key={idx}>
+                                                    {suggestion}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
 
                                 <div className="flex align-middle items-start gap-2">
@@ -238,7 +283,9 @@ export const App = () => {
                         {!searchResults && !error && (
                             <div className="text-center py-6 sm:py-8">
                                 <p className="text-slate-400">
-                                    Enter a search query to get started
+                                    {searchQuery.trim().length > 3
+                                        ? "Press Cmd+Enter"
+                                        : "Enter a search query to get started"}
                                 </p>
                             </div>
                         )}
