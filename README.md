@@ -13,8 +13,7 @@ This project is a full-stack Bun.js application featuring:
 -   `/ui/*` - Frontend React application
 -   `/swagger` - Documantation
 -   Each bot working in separate thread via web socket
-
-[Blank diagram.pdf](https://github.com/user-attachments/files/18136760/Blank.diagram.pdf)
+<img width="976" alt="Screenshot 2024-12-14 at 18 39 28" src="https://github.com/user-attachments/assets/549d8d80-be13-4c55-af49-b8913c0583f7" />
 
 
 ## Installation
