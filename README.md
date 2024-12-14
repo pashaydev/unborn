@@ -14,6 +14,9 @@ This project is a full-stack Bun.js application featuring:
 -   `/swagger` - Documantation
 -   Each bot working in separate thread via web socket
 
+[Blank diagram.pdf](https://github.com/user-attachments/files/18136760/Blank.diagram.pdf)
+
+
 ## Installation
 
 1. Clone the repository:
