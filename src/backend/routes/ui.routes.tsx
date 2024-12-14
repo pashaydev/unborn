@@ -1,5 +1,5 @@
 import { Html } from "@elysiajs/html";
-import { Elysia, t } from "elysia";
+import { Elysia } from "elysia";
 import type Anthropic from "@anthropic-ai/sdk";
 import type OpenAI from "openai";
 import { swagger } from "@elysiajs/swagger";
@@ -57,7 +57,7 @@ export const createUiRotes = (deps: {
             }
         )
         .get(
-            "ui-login",
+            "ui/login",
             async () => {
                 return (
                     <html lang="en">
@@ -66,12 +66,12 @@ export const createUiRotes = (deps: {
                             <meta name="theme-color" content="#0f172a"></meta>
                             <meta name="color-scheme" content="dark"></meta>
                             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                            <link rel="stylesheet" href="public/main.css"></link>
-                            <link rel="icon" href="public/favicon.svg" type="image/x-icon" />
+                            <link rel="stylesheet" href="../public/main.css"></link>
+                            <link rel="icon" href="../public/favicon.svg" type="image/x-icon" />
                         </head>
                         <body>
                             <div id="root"></div>
-                            <script src="public/client.js" />
+                            <script src="../public/client.js" />
                         </body>
                     </html>
                 );

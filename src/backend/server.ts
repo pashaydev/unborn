@@ -10,6 +10,8 @@ import { ghostwriterRoutes } from "./routes/ghostwriter.routes";
 import { createUiRotes } from "./routes/ui.routes";
 import html from "@elysiajs/html";
 import staticPlugin from "@elysiajs/static";
+import createSSERoutes from "./routes/sse.routes";
+import { compression } from "elysia-compression";
 
 export const startHttpServer = async (config: any) => {
     const anthropic = new Anthropic({ apiKey: config.ANTHROPIC_API_KEY });
@@ -24,6 +26,15 @@ export const startHttpServer = async (config: any) => {
             .use(authMiddleware)
             .use(html())
             .use(staticPlugin())
+            // For static files, you might want to add compression to them as well
+            .use(
+                compression({
+                    type: "gzip",
+                    options: {
+                        level: 6,
+                    },
+                })
+            )
             .use(
                 swagger({
                     documentation: {
@@ -39,6 +50,7 @@ export const startHttpServer = async (config: any) => {
             .use(scrapperRoutes(deps))
             .use(ghostwriterRoutes(deps))
             .use(createUiRotes(deps))
+            .use(createSSERoutes(deps))
             .listen(Bun.env.PORT || 3000);
 
         type Context = InferContext<typeof app>;

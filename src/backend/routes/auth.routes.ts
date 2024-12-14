@@ -12,11 +12,11 @@ export const authRoutes = new Elysia()
 
             const ip = request.headers["x-forwarded-for"];
 
-            if (password !== pass2) throw new Error("Passwords do not match");
+            if (password !== pass2) return request.error(422, "Passwords do not match");
 
             const db = await databaseManager.getDatabase();
 
-            if (!db) throw new Error("Database not reachable");
+            if (!db) return request.error(500, "Database not reachable");
 
             const bcryptHash = await Bun.password.hash(password, {
                 algorithm: "bcrypt",
@@ -30,7 +30,7 @@ export const authRoutes = new Elysia()
                 .single();
 
             if (existingUserByUsername) {
-                return new Error("User with this username already exists");
+                return request.error(422, "User with this username already exists");
             }
 
             const { data: existingUserByIp } = await db
@@ -40,7 +40,7 @@ export const authRoutes = new Elysia()
                 .single();
 
             if (existingUserByIp) {
-                return new Error("IP should be unique");
+                return request.error(401, "IP should be unique");
             }
 
             const userId = String(Math.floor(Math.random() * 1000000));
@@ -61,7 +61,7 @@ export const authRoutes = new Elysia()
                 .select("*")
                 .single();
 
-            if (error) throw new Error(error.message);
+            if (error) return request.error(500, error.message);
 
             return {
                 token: await jwt.sign({
@@ -91,7 +91,7 @@ export const authRoutes = new Elysia()
             const { username, password } = body;
             const db = await databaseManager.getDatabase();
 
-            if (!db) throw new Error("Database not reachable");
+            if (!db) return request.error(500, "Database not reachable");
 
             const { data: user, error } = await db
                 .from("users")
@@ -99,11 +99,11 @@ export const authRoutes = new Elysia()
                 .eq("username", username)
                 .single();
 
-            if (error) throw new Error(error.message);
+            if (error) return request.error(500, error.message);
 
             const isMatch = await Bun.password.verify(password, user.hash_pass);
 
-            if (!isMatch) throw new Error("Invalid credentials");
+            if (!isMatch) return request.error(401, "Invalid credentials");
 
             return {
                 success: true,

@@ -1,29 +1,9 @@
 {
     "compilerOptions": {
-        // "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
-        // "target": "ES2020",
-        // "useDefineForClassFields": true,
-        // "lib": ["ES2020", "DOM", "DOM.Iterable"],
-        // "module": "ESNext",
-        // "skipLibCheck": true,
-
-        // /* Bundler mode */
-        // "moduleResolution": "bundler",
-        // "allowImportingTsExtensions": true,
-        // "isolatedModules": true,
-        // "moduleDetection": "force",
-        // "noEmit": true,
-        // // "jsx": "react-jsx",
-
         "jsx": "react",
         "jsxFactory": "Html.createElement",
         "jsxFragmentFactory": "Html.Fragment"
     },
-    "references": [{ "path": "./src/frontend" }, { "path": "./src/backend" }],
-    "include": ["src/backend"]
+    "references": [{ "path": "./src/frontend" }, { "path": "./src/backend" }]
+    // "include": ["src/backend"]
 }
-
-// {
-//     "references": [{ "path": "./src/frontend" }, { "path": "./src/backend" }],
-//     "files": [] // Leave empty to prevent direct compilation
-// }

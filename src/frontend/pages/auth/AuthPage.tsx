@@ -1,26 +1,7 @@
 import { useNavigate } from "react-router";
 import React, { useEffect, useState } from "react";
-
-const Input = ({ label, id, type = "text", value, onChange, placeholder, autoComplete }) => (
-    <div>
-        <label htmlFor={id} className="block text-sm font-medium text-gray-300 mb-1">
-            {label}
-        </label>
-        <input
-            id={id}
-            type={type}
-            value={value}
-            onChange={onChange}
-            autoComplete={autoComplete}
-            required
-            className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-lg 
-                    text-gray-100 placeholder-gray-400
-                    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
-                    transition-all duration-200"
-            placeholder={placeholder}
-        />
-    </div>
-);
+import { Input } from "../../components/ui/input";
+import { Button } from "../../components/ui/button";
 
 const Alert = ({ type, message, onClose }) => {
     if (!message) return null;
@@ -41,6 +22,7 @@ const Alert = ({ type, message, onClose }) => {
 
 export const AuthPage = () => {
     const navigate = useNavigate();
+    const [selectedType, setSelectedType] = useState("login");
     const [alert, setAlert] = useState({ type: "", message: "" });
 
     const [loginForm, setLoginForm] = useState({
@@ -135,20 +117,23 @@ export const AuthPage = () => {
     }, []);
 
     return (
-        <>
-            <main className="container mx-auto px-4 py-8">
+        <div className="bg-black w-full min-h-screen text-gray-100">
+            <main className="container mx-auto px-4 py-8 relative z-10">
                 <div className="max-w-md mx-auto">
                     <h1 className="text-3xl font-bold text-center mb-8 text-white tracking-tight">
                         Authentication
                     </h1>
 
-                    <div className="bg-gray-900 rounded-xl shadow-2xl p-6 border border-slate-700">
+                    <div className="bg-black rounded-xl shadow-2xl p-6">
                         {/* Login Form */}
-                        <div className="mb-8">
+                        <div
+                            onFocus={() => setSelectedType("login")}
+                            onMouseEnter={() => setSelectedType("login")}
+                            className={`mb-8 ${selectedType === "login" ? "" : "opacity-30"}`}>
                             <h2 className="text-xl font-semibold mb-6 text-gray-100">Login</h2>
                             <form onSubmit={handleLogin} className="space-y-4">
                                 <Input
-                                    label="Username"
+                                    title="Username"
                                     id="username"
                                     type="text"
                                     value={loginForm.username}
@@ -157,7 +142,7 @@ export const AuthPage = () => {
                                     autoComplete="username"
                                 />
                                 <Input
-                                    label="Password"
+                                    title="Password"
                                     id="password"
                                     type="password"
                                     value={loginForm.password}
@@ -165,14 +150,14 @@ export const AuthPage = () => {
                                     placeholder="Enter your password"
                                     autoComplete="current-password"
                                 />
-                                <button
+                                <Button
                                     type="submit"
                                     className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg 
                                             hover:bg-blue-500 focus:outline-none focus:ring-2 
                                             focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800
                                             transition-all duration-200">
                                     Login
-                                </button>
+                                </Button>
                             </form>
                         </div>
 
@@ -188,11 +173,14 @@ export const AuthPage = () => {
 
                         {/* Sign Up Form */}
                         {/* Similar structure for signup form using the Input component */}
-                        <div className="mb-8">
+                        <div
+                            onFocus={() => setSelectedType("signup")}
+                            onMouseEnter={() => setSelectedType("signup")}
+                            className={`mb-8 ${selectedType === "signup" ? "" : "opacity-30"}`}>
                             <h2 className="text-xl font-semibold mb-6 text-gray-100">SignUp</h2>
                             <form onSubmit={handleSignup} className="space-y-4">
                                 <Input
-                                    label="Username"
+                                    title="Username"
                                     id="name"
                                     type="text"
                                     onChange={handleSignupChange}
@@ -201,7 +189,7 @@ export const AuthPage = () => {
                                 />
 
                                 <Input
-                                    label="Email"
+                                    title="Email"
                                     id="semail"
                                     type="email"
                                     value={signupForm.semail}
@@ -211,31 +199,32 @@ export const AuthPage = () => {
                                 />
 
                                 <Input
-                                    label="Password"
+                                    title="Password"
                                     id="spassword"
                                     type="password"
                                     value={signupForm.spassword}
                                     onChange={handleSignupChange}
                                     placeholder="Enter your password"
-                                    autoComplete="password"
+                                    autoComplete="new-password"
                                 />
                                 <Input
-                                    label="Repeat Password"
+                                    title="Repeat Password"
                                     id="srepeatPassword"
                                     type="password"
                                     value={signupForm.srepeatPassword}
                                     onChange={handleSignupChange}
                                     placeholder="Repeat password"
+                                    autoComplete="new-password"
                                 />
 
-                                <button
+                                <Button
                                     type="submit"
                                     className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg
                                             hover:bg-purple-500 focus:outline-none focus:ring-2
                                             focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-slate-800
                                             transition-all duration-200">
                                     Create Account
-                                </button>
+                                </Button>
                             </form>
                         </div>
                     </div>
@@ -247,6 +236,6 @@ export const AuthPage = () => {
                 message={alert.message}
                 onClose={() => setAlert({ type: "", message: "" })}
             />
-        </>
+        </div>
     );
 };

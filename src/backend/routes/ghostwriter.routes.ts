@@ -14,7 +14,6 @@ export const ghostwriterRoutes = (deps: {
     new Elysia()
         .get(
             "ghostwriter",
-
             async request => {
                 const query = request.query;
                 const phrase = query.phrase;

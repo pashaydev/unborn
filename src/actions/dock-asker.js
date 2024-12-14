@@ -1,7 +1,6 @@
 import { saveHistory, updateTokensTracking } from "../database/db.js";
 import { parseOfficeAsync } from "officeparser";
-import * as pdfjsLib from "pdfjs-dist";
-import PDFParser from "../libs/pdf-parser.js";
+import PDFParser from "../lib/pdf-parser.js";
 
 export default class DockAsker {
     /**

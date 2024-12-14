@@ -9,7 +9,8 @@ export default defineConfig({
         rollupOptions: {
             input: {
                 main: "./src/frontend/Root.tsx",
-                favicon: "./src/frontend/favicon.svg",
+                favicon: "./src/frontend/assets/favicon.svg",
+                snowflake: "./src/frontend/assets/snow.webp",
             },
             output: {
                 entryFileNames: `client.js`,
@@ -17,7 +18,17 @@ export default defineConfig({
                 assetFileNames: `[name].[ext]`,
             },
         },
-        assetsDir: "assets",
         emptyOutDir: true,
+    },
+    compilerOptions: {
+        baseUrl: ".",
+        paths: {
+            "@/*": ["./src/frontend*"],
+        },
+    },
+    resolve: {
+        alias: {
+            "@": path.resolve(__dirname, "./src/frontend"),
+        },
     },
 });

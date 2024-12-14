@@ -57,7 +57,7 @@ export const scrapperRoutes = (deps: {
 
                 console.log("Search interaction: ", interaction, interaction?.length);
 
-                if (interaction && interaction?.count > 5) {
+                if (interaction && interaction?.count > 25) {
                     return error(429, "InteractionLimit");
                 }
 
@@ -129,7 +129,7 @@ export const scrapperRoutes = (deps: {
 
                 console.log("Search interaction: ", interaction, interaction?.length);
 
-                if (interaction && interaction?.count > 5) {
+                if (interaction && interaction?.count > 25) {
                     return error(429, "InteractionLimit");
                 }
 
@@ -198,14 +198,23 @@ export const scrapperRoutes = (deps: {
                 },
             }
         )
-        .get("/api/suggestions", async ({ error, query }) => {
-            try {
-                const searchTerm = query.q;
-                const response = await axios.get(
-                    `http://suggestqueries.google.com/complete/search?output=toolbar&hl=en&q=${searchTerm}&gl=uk`
-                );
-                return response.data;
-            } catch (error) {
-                return error(500, "Failed to fetch suggestions");
+        .get(
+            "/api/suggestions",
+            async ({ error, query }) => {
+                try {
+                    const searchTerm = query.q;
+                    const response = await axios.get(
+                        `http://suggestqueries.google.com/complete/search?output=toolbar&hl=en&q=${searchTerm}&gl=uk`
+                    );
+                    return response.data;
+                } catch (err) {
+                    return error(500, "Failed to fetch suggestions");
+                }
+            },
+            {
+                detail: {
+                    summary: "Suggestions for user input from Google API",
+                    tags: ["Web Scrapping"],
+                },
             }
-        });
+        );

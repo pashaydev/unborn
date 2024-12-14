@@ -4,9 +4,12 @@
         "outDir": "../../public",
         "rootDir": ".",
         "composite": true,
-        // Frontend-specific options
         "lib": ["dom", "es6"],
-        "jsx": "react"
+        "jsx": "react",
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["./src/frontend/*"]
+        }
     },
     "include": ["./**/*.ts", "./**/*.tsx"],
     "exclude": ["node_modules"]
