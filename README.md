@@ -21,7 +21,7 @@ This project is a full-stack Bun.js application featuring:
 1. Clone the repository:
 
     ```sh
-    git clone https://github.com/PashaYakubovsky/unborn
+    git clone https://github.com/pashaydev/unborn
     cd unborn
     ```
 
