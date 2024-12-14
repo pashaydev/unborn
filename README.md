@@ -11,6 +11,7 @@ This project is a full-stack Bun.js application featuring:
 
 -   `/api/*` - REST API endpoints
 -   `/ui/*` - Frontend React application
+-   `/swagger` - Documantation
 -   Each bot working in separate thread via web socket
 
 ## Installation
