@@ -150,6 +150,11 @@ export const App = () => {
                         Authorization: `Bearer ${localStorage.getItem("authToken")}`,
                     },
                 });
+
+                if (response.status === 401) {
+                    return navigation("/ui/login");
+                }
+
                 const history = (await response.json()) || [];
 
                 setPagination(p => ({ ...p, total: history.length }));

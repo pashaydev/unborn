@@ -177,7 +177,7 @@ class HeroSketch {
                     vec3 color = txt.rgb;
                     
                     // Add slight color adjustment when blurred
-                    color = mix(color, vec3(0.5, 0.5, 0.6), 1.0 - vFocusTransition);
+                    color = mix(color, vec3(0.0), 1.0 - vFocusTransition);
                     
                     gl_FragColor = vec4(color, vColor.x);
                 }
