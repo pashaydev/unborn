@@ -22,6 +22,11 @@ export const App = () => {
     const [searchResults, setSearchResults] = useState(null);
     const [error, setError] = useState(null);
     const [searchHistory, setSearchHistory] = useState([]);
+    const [pagination, setPagination] = useState<Pagination>({
+        cur: 0,
+        maxPerPage: 10,
+        total: 0,
+    });
 
     const performQuickSearch = async () => {
         setIsLoading(true);
@@ -102,7 +107,7 @@ export const App = () => {
     };
 
     const addToSearchHistory = searchItem => {
-        setSearchHistory(prev => [searchItem, ...prev].slice(0, 10)); // Keep last 10 searches
+        setSearchHistory(prev => [searchItem, ...prev]);
     };
 
     const handleSubmit = (e, type) => {
@@ -123,6 +128,11 @@ export const App = () => {
     useEffect(() => {
         const init = async () => {
             try {
+                const authToken = localStorage.getItem("authToken");
+                if (!authToken) {
+                    return navigation("/ui/login");
+                }
+
                 document.title = "Scrapper";
 
                 try {
@@ -141,6 +151,13 @@ export const App = () => {
                     },
                 });
                 const history = (await response.json()) || [];
+
+                setPagination(p => ({ ...p, total: history.length }));
+
+                history.sort(
+                    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                );
+
                 setSearchHistory(
                     history.map(hR => {
                         return {
@@ -194,7 +211,6 @@ export const App = () => {
                             <div className="flex flex-col sm:flex-row gap-3 search-buttons-container">
                                 <div className="relative flex-1">
                                     <Textarea
-                                        tabIndex={2}
                                         onKeyDown={e => {
                                             const key = e.key;
                                             if (key === "Enter" && (e.metaKey || e.ctrlKey)) {
@@ -325,26 +341,34 @@ export const App = () => {
                             </div>
                         )}
 
-                        {searchResults && (
-                            <div
-                                className="mt-4 sm:mt-6 space-y-4 prose prose-invert max-w-none text-sm sm:text-base"
-                                dangerouslySetInnerHTML={{
-                                    __html: markedLib
-                                        .current?.(searchResults)
-                                        .replace(
-                                            /<a /g,
-                                            '<a target="_blank" rel="noopener noreferrer" '
-                                        ),
-                                }}
-                            />
+                        {isLoading || isDeepLoading ? (
+                            <div className="text-center py-6 sm:py-8">
+                                <p className="text-slate-400">Scrapping the web for get you info</p>
+                            </div>
+                        ) : (
+                            searchResults && (
+                                <div
+                                    className="mt-4 sm:mt-6 space-y-4 prose prose-invert max-w-none text-sm sm:text-base"
+                                    dangerouslySetInnerHTML={{
+                                        __html: markedLib
+                                            .current?.(searchResults)
+                                            .replace(
+                                                /<a /g,
+                                                '<a target="_blank" rel="noopener noreferrer" '
+                                            ),
+                                    }}
+                                />
+                            )
                         )}
                     </div>
 
                     {searchHistory.length > 0 && (
                         <div className="mt-6 bg-black p-2">
-                            <h4 className="text-lg mb-1 mt-2">Search History</h4>
+                            <h2 className="text-lg mb-1 mt-2">Search History</h2>
 
                             <TableDemo
+                                setPagination={setPagination}
+                                pagination={pagination}
                                 handleClickToHistory={handleClickToHistory}
                                 data={searchHistory}
                             />
@@ -356,9 +380,17 @@ export const App = () => {
     );
 };
 
+type Pagination = {
+    cur: number;
+    maxPerPage: number;
+    total: number;
+};
+
 const TableDemo = ({
     data,
     handleClickToHistory,
+    pagination,
+    setPagination,
 }: {
     data: {
         query: string;
@@ -366,42 +398,73 @@ const TableDemo = ({
         timestamp: number;
     }[];
     handleClickToHistory: (r: any) => void;
+    pagination: Pagination;
+    setPagination: React.Dispatch<React.SetStateAction<Pagination>>;
 }) => {
     return (
-        <Table>
-            <TableCaption>A list of your recent searches.</TableCaption>
-            <TableHeader>
-                <TableRow>
-                    <TableHead className="">Query</TableHead>
-                    <TableHead>Created at</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Action</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {data.map(record => (
-                    <TableRow key={record.timestamp}>
-                        <TableCell className="font-medium">{record.query}</TableCell>
-                        <TableCell>
-                            {new Date(record.timestamp).toLocaleString("en-US", {
-                                month: "short",
-                                day: "2-digit",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                            })}
-                        </TableCell>
-                        <TableCell>{record.type}</TableCell>
-                        <TableCell>
-                            <Button
-                                onClick={() => handleClickToHistory(record)}
-                                size="sm"
-                                variant="outline">
-                                Restore
-                            </Button>
-                        </TableCell>
+        <div className="relative">
+            <Table>
+                <TableCaption>A list of your recent searches.</TableCaption>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead className="">Query</TableHead>
+                        <TableHead>Created at</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Action</TableHead>
                     </TableRow>
-                ))}
-            </TableBody>
-        </Table>
+                </TableHeader>
+                <TableBody>
+                    {data.slice(pagination.cur, pagination.maxPerPage).map(record => (
+                        <TableRow key={record.timestamp}>
+                            <TableCell className="font-medium">{record.query}</TableCell>
+                            <TableCell className="whitespace-nowrap">
+                                {new Date(record.timestamp).toLocaleString("en-US", {
+                                    month: "short",
+                                    day: "2-digit",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                })}
+                            </TableCell>
+                            <TableCell>{record.type}</TableCell>
+                            <TableCell>
+                                <Button
+                                    onClick={() => handleClickToHistory(record)}
+                                    size="sm"
+                                    variant="outline">
+                                    Restore
+                                </Button>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+
+            <div className="space-x-2 flex justify-end align-middle">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pagination.cur <= 0}
+                    onClick={() => {
+                        setPagination(p => ({ ...p, cur: p.cur > 0 ? p.cur - 1 : p.cur }));
+                    }}>
+                    Previous
+                </Button>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pagination.cur > Math.round(pagination.total / pagination.maxPerPage)}
+                    onClick={() => {
+                        setPagination(p => ({
+                            ...p,
+                            cur:
+                                p.cur > Math.round(pagination.total / pagination.maxPerPage)
+                                    ? p.cur
+                                    : p.cur + 1,
+                        }));
+                    }}>
+                    Next
+                </Button>
+            </div>
+        </div>
     );
 };

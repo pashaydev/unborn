@@ -216,5 +216,10 @@ export const scrapperRoutes = (deps: {
                     summary: "Suggestions for user input from Google API",
                     tags: ["Web Scrapping"],
                 },
+                query: t.Object({
+                    q: t.String({
+                        description: "Get suggestions list from Google",
+                    }),
+                }),
             }
         );
