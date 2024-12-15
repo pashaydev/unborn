@@ -198,6 +198,8 @@ export const App = () => {
         });
     };
 
+    const [inputFocused, setInputFocused] = useState(false);
+
     return (
         <div className="bg-black w-full min-h-screen text-gray-100">
             <main className="container mx-auto py-4 sm:py-6 lg:py-8 relative z-10">
@@ -209,7 +211,14 @@ export const App = () => {
                     <div className="rounded-xl shadow-2xl sm:py-6 px-2 bg-black">
                         <form onSubmit={e => e.preventDefault()} className="mb-4 sm:mb-6">
                             <div className="flex flex-col sm:flex-row gap-3 search-buttons-container">
-                                <div className="relative flex-1">
+                                <div
+                                    onFocus={() => {
+                                        setInputFocused(true);
+                                    }}
+                                    onBlur={() => {
+                                        setInputFocused(false);
+                                    }}
+                                    className="relative flex-1">
                                     <Textarea
                                         onKeyDown={e => {
                                             const key = e.key;
@@ -238,7 +247,7 @@ export const App = () => {
                                         required
                                     />
 
-                                    {suggestions.length > 0 && (
+                                    {inputFocused && suggestions.length > 0 && (
                                         <ScrollArea className="h-[200px] mt-[0.5rem] w-full rounded-md border p-1 border-slate-700">
                                             {suggestions.map((suggestion, idx) => {
                                                 return (
@@ -269,10 +278,12 @@ export const App = () => {
                                 <div className="flex align-middle items-start gap-2">
                                     <span data-tippy-content="Quick Search performs parallel searches across Google, Bing, and DuckDuckGo, combining results and using AI to format them into a comprehensive summary.">
                                         <Button
-                                            variant="outline"
+                                            variant="default"
                                             className="relative"
                                             onClick={e => handleSubmit(e, "quick")}
-                                            disabled={isButtonDisabled || isLoading}>
+                                            disabled={
+                                                isButtonDisabled || isLoading || isDeepLoading
+                                            }>
                                             <div className="flex align-middle justify-center origin-center">
                                                 <span>
                                                     {isLoading ? "Searching..." : "Quick Search"}
@@ -297,9 +308,11 @@ export const App = () => {
 
                                     <span data-tippy-content="Deep Search performs an extensive Google search, recursively analyzing all inner links to gather comprehensive information. This deep analysis is then processed by AI to provide detailed, in-depth results.">
                                         <Button
-                                            variant="outline"
+                                            variant="default"
                                             onClick={e => handleSubmit(e, "deep")}
-                                            disabled={isButtonDisabled || isDeepLoading}>
+                                            disabled={
+                                                isButtonDisabled || isDeepLoading || isLoading
+                                            }>
                                             <div className="flex align-middle justify-center origin-center">
                                                 <span>
                                                     {isDeepLoading ? "Searching..." : "Deep Search"}
@@ -331,7 +344,7 @@ export const App = () => {
                             </div>
                         )}
 
-                        {!searchResults && !error && (
+                        {!searchResults && !error && !(isLoading || isDeepLoading) && (
                             <div className="text-center py-6 sm:py-8">
                                 <p className="text-slate-400">
                                     {searchQuery.trim().length > 3
