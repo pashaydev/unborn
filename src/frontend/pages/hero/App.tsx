@@ -13,6 +13,7 @@ import {
     TableHeader,
     TableRow,
 } from "../../components/ui/table";
+import AnimatedText from "../../components/ui/animated-text";
 
 export const App = () => {
     const navigation = useNavigate();
@@ -184,6 +185,10 @@ export const App = () => {
     const handleClickToHistory = hR => {
         setSearchResults(markedLib.current?.(hR.results) || "");
         setSearchQuery(hR.query);
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth",
+        });
     };
 
     const [suggestions, setSuggestions] = useState([]);
@@ -209,8 +214,12 @@ export const App = () => {
         <div className="bg-black w-full min-h-screen text-gray-100">
             <main className="container mx-auto py-4 sm:py-6 lg:py-8 relative z-10">
                 <div className="max-w-4xl mx-auto">
-                    <h1 className="text-2xl sm:text-3xl pb-2 font-bold text-center mb-4 sm:mb-8 tracking-tight main-title border-b-2 border-transparent animate-fade-in-out">
-                        Scrapper
+                    <h1 className="flex align-middle justify-center gap-[0.5rem] text-2xl sm:text-3xl pb-2 font-bold text-center mb-4 sm:mb-8 tracking-tight main-title border-b-2 border-transparent animate-fade-in-out">
+                        <img
+                            src="/public/favicon.svg"
+                            className="w-[2rem] h-[2rem] object-contain"
+                        />
+                        <AnimatedText text="Scrapper" />
                     </h1>
 
                     <div className="rounded-xl shadow-2xl sm:py-6 px-2 bg-black">
@@ -254,7 +263,7 @@ export const App = () => {
                                                                 setSuggestions([]);
                                                             }
                                                         }}
-                                                        className="cursor-pointer transition-all text-sm rounded-sm block"
+                                                        className="cursor-pointer transition-all text-sm rounded-sm block w-full text-start"
                                                         key={idx}>
                                                         {suggestion}
                                                     </Button>
@@ -265,10 +274,12 @@ export const App = () => {
                                 </div>
 
                                 <div className="flex align-middle items-start gap-2">
-                                    <span data-tippy-content="Quick Search performs parallel searches across Google, Bing, and DuckDuckGo, combining results and using AI to format them into a comprehensive summary.">
+                                    <span
+                                        className="max-sm:w-full"
+                                        data-tippy-content="Quick Search performs parallel searches across Google, Bing, and DuckDuckGo, combining results and using AI to format them into a comprehensive summary.">
                                         <Button
                                             variant="default"
-                                            className="relative"
+                                            className="relative max-sm:w-full"
                                             onClick={e => handleSubmit(e, "quick")}
                                             disabled={
                                                 isButtonDisabled || isLoading || isDeepLoading
@@ -295,8 +306,11 @@ export const App = () => {
                                         </Button>
                                     </span>
 
-                                    <span data-tippy-content="Deep Search performs an extensive Google search, recursively analyzing all inner links to gather comprehensive information. This deep analysis is then processed by AI to provide detailed, in-depth results.">
+                                    <span
+                                        className="max-sm:w-full"
+                                        data-tippy-content="Deep Search performs an extensive Google search, recursively analyzing all inner links to gather comprehensive information. This deep analysis is then processed by AI to provide detailed, in-depth results.">
                                         <Button
+                                            className="relative max-sm:w-full"
                                             variant="default"
                                             onClick={e => handleSubmit(e, "deep")}
                                             disabled={
@@ -350,7 +364,7 @@ export const App = () => {
                         ) : (
                             searchResults && (
                                 <div
-                                    className="mt-4 sm:mt-6 space-y-4 prose prose-invert max-w-none text-sm sm:text-base"
+                                    className="my-4 sm:my-6 space-y-4 prose prose-invert max-w-none text-sm sm:text-base"
                                     dangerouslySetInnerHTML={{
                                         __html: markedLib
                                             .current?.(searchResults)
@@ -416,32 +430,37 @@ const TableDemo = ({
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {data.slice(pagination.cur, pagination.maxPerPage).map(record => (
-                        <TableRow key={record.timestamp}>
-                            <TableCell className="font-medium">{record.query}</TableCell>
-                            <TableCell className="whitespace-nowrap">
-                                {new Date(record.timestamp).toLocaleString("en-US", {
-                                    month: "short",
-                                    day: "2-digit",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                })}
-                            </TableCell>
-                            <TableCell>{record.type}</TableCell>
-                            <TableCell>
-                                <Button
-                                    onClick={() => handleClickToHistory(record)}
-                                    size="sm"
-                                    variant="outline">
-                                    Restore
-                                </Button>
-                            </TableCell>
-                        </TableRow>
-                    ))}
+                    {data
+                        .slice(
+                            pagination.cur * pagination.maxPerPage,
+                            (pagination.cur + 1) * pagination.maxPerPage
+                        )
+                        .map(record => (
+                            <TableRow key={record.timestamp}>
+                                <TableCell className="font-medium">{record.query}</TableCell>
+                                <TableCell className="whitespace-nowrap">
+                                    {new Date(record.timestamp).toLocaleString("en-US", {
+                                        month: "short",
+                                        day: "2-digit",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                    })}
+                                </TableCell>
+                                <TableCell>{record.type}</TableCell>
+                                <TableCell>
+                                    <Button
+                                        onClick={() => handleClickToHistory(record)}
+                                        size="sm"
+                                        variant="outline">
+                                        Restore
+                                    </Button>
+                                </TableCell>
+                            </TableRow>
+                        ))}
                 </TableBody>
             </Table>
 
-            <div className="space-x-2 flex justify-end align-middle">
+            <div className="space-x-2 flex justify-end align-middle my-2">
                 <Button
                     variant="outline"
                     size="sm"
@@ -451,10 +470,17 @@ const TableDemo = ({
                     }}>
                     Previous
                 </Button>
+
+                <span className="bold block ring-slate-500 p-1">
+                    {pagination.cur + 1}/{Math.round(pagination.total / pagination.maxPerPage)}
+                </span>
+
                 <Button
                     variant="outline"
                     size="sm"
-                    disabled={pagination.cur > Math.round(pagination.total / pagination.maxPerPage)}
+                    disabled={
+                        pagination.cur >= Math.ceil(pagination.total / pagination.maxPerPage) - 1
+                    }
                     onClick={() => {
                         setPagination(p => ({
                             ...p,

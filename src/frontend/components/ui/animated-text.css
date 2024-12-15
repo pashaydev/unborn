@@ -1,0 +1,16 @@
+.animated-text {
+    font-family: monospace;
+    font-size: 2rem;
+    font-weight: bold;
+    display: inline-block;
+}
+
+.animated-letter {
+    display: inline-block;
+    transition: color 0.2s ease;
+}
+
+.animated-letter:hover {
+    color: #007bff;
+    transform: scale(1.1);
+}
