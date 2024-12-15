@@ -6,7 +6,7 @@ export const authMiddleware = (app: Elysia) =>
         .use(
             jwt({
                 name: "jwt",
-                secret: process.env.JWT_SECRET || "your-secret-key",
+                secret: process.env.JWT_SECRET,
                 exp: "1h",
             })
         )

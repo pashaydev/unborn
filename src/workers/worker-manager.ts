@@ -34,7 +34,7 @@ class WorkerManager {
 
         this.worker.onerror = error => {
             console.error(`Worker error: ${error}`);
-            // this.handleWorkerFailure();
+            this.handleWorkerFailure();
         };
 
         this.worker.addEventListener("exit", event => {

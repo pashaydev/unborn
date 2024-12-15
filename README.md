@@ -59,8 +59,7 @@ This project is a full-stack Bun.js application featuring:
     export REDDIT_API_URL=reddit-api-url
     export PORT=your-port-default-3000
     export SECRET_PATH=your-secret-path-or-empty
-    export GCS_BUCKET_NAME=your-google-claude-storage-name
-    export GCS_KEY_FILE=json-gcs-file
+    export JWT_SECRET=your-jwt-secret
     ```
 
 ## Development
