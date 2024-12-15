@@ -216,26 +216,12 @@ export const App = () => {
                     <div className="rounded-xl shadow-2xl sm:py-6 px-2 bg-black">
                         <form onSubmit={e => e.preventDefault()} className="mb-4 sm:mb-6">
                             <div className="flex flex-col sm:flex-row gap-3 search-buttons-container">
-                                <div
-                                    onFocus={() => {
-                                        setInputFocused(true);
-                                    }}
-                                    onBlur={() => {
-                                        setInputFocused(false);
-                                    }}
-                                    className="relative flex-1">
+                                <div className="relative flex-1">
                                     <Textarea
                                         onKeyDown={e => {
                                             const key = e.key;
                                             if (key === "Enter" && (e.metaKey || e.ctrlKey)) {
                                                 handleSubmit(e, "quick");
-                                            }
-                                        }}
-                                        onFocusCapture={e => {
-                                            if (e.target.value.length > 15) {
-                                                e.target.style.height = "150px";
-                                            } else {
-                                                e.target.style.height = "auto";
                                             }
                                         }}
                                         onBlur={e => {
@@ -247,18 +233,16 @@ export const App = () => {
                                             setSearchQuery(e.target.value);
                                         }}
                                         className="border-slate-700 w-full"
-                                        // className="search-input w-full px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-sm sm:text-base transition-all duration-200"
                                         placeholder="Enter your search query..."
                                         required
                                     />
 
-                                    {inputFocused && suggestions.length > 0 && (
+                                    {suggestions.length > 0 && (
                                         <ScrollArea className="h-[200px] mt-[0.5rem] w-full rounded-md border p-1 border-slate-700">
                                             {suggestions.map((suggestion, idx) => {
                                                 return (
                                                     <Button
                                                         variant="ghost"
-                                                        tabIndex={2 + idx}
                                                         onClick={() => {
                                                             setSearchQuery(suggestion);
                                                             setSuggestions([]);
