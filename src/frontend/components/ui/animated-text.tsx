@@ -18,9 +18,12 @@ const AnimatedText: React.FC<AnimatedTextProps> = ({ text, duration = 2000, dela
 
         const animateLetter = (index: number, currentIteration: number) => {
             if (currentIteration >= iterations) {
-                setDisplayText(
-                    prev => prev.substring(0, index) + finalText[index] + prev.substring(index + 1)
-                );
+                setDisplayText(prev => {
+                    const text =
+                        prev.substring(0, index) + finalText[index] + prev.substring(index + 1);
+
+                    return text;
+                });
                 return;
             }
 

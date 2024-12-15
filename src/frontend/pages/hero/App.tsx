@@ -4,16 +4,9 @@ import "tippy.js/dist/tippy.css";
 import { Textarea } from "../../components/ui/textarea";
 import { Button } from "../../components/ui/button";
 import { ScrollArea } from "../../components/ui/scroll-area";
-import {
-    Table,
-    TableBody,
-    TableCaption,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "../../components/ui/table";
 import AnimatedText from "../../components/ui/animated-text";
+import History from "./History";
+import { HistoryRecord, Pagination } from "./types";
 
 export const App = () => {
     const navigation = useNavigate();
@@ -22,7 +15,7 @@ export const App = () => {
     const [isDeepLoading, setIsDeepLoading] = useState(false);
     const [searchResults, setSearchResults] = useState(null);
     const [error, setError] = useState(null);
-    const [searchHistory, setSearchHistory] = useState([]);
+    const [searchHistory, setSearchHistory] = useState<HistoryRecord[]>([]);
     const [pagination, setPagination] = useState<Pagination>({
         cur: 0,
         maxPerPage: 10,
@@ -120,6 +113,8 @@ export const App = () => {
         } else {
             performDeepSearch();
         }
+
+        setSuggestions([]);
     };
 
     const isButtonDisabled = searchQuery.length < 3;
@@ -208,16 +203,16 @@ export const App = () => {
         });
     };
 
-    const [inputFocused, setInputFocused] = useState(false);
+    const logoRef = useRef<HTMLImageElement>(null);
 
     return (
         <div className="bg-black w-full min-h-screen text-gray-100">
             <main className="container mx-auto py-4 sm:py-6 lg:py-8 relative z-10">
                 <div className="max-w-4xl mx-auto">
                     <h1 className="flex align-middle justify-center gap-[0.5rem] text-2xl sm:text-3xl pb-2 font-bold text-center mb-4 sm:mb-8 tracking-tight main-title border-b-2 border-transparent animate-fade-in-out">
-                        <img
-                            src="/public/favicon.svg"
-                            className="w-[2rem] h-[2rem] object-contain"
+                        <LogoAnimated
+                            // isLoading
+                            isLoading={isLoading || isDeepLoading}
                         />
                         <AnimatedText text="Scrapper" />
                     </h1>
@@ -378,121 +373,55 @@ export const App = () => {
                         )}
                     </div>
 
-                    {searchHistory.length > 0 && (
-                        <div className="mt-6 bg-black p-2">
-                            <h2 className="text-lg mb-1 mt-2">Search History</h2>
-
-                            <TableDemo
-                                setPagination={setPagination}
-                                pagination={pagination}
-                                handleClickToHistory={handleClickToHistory}
-                                data={searchHistory}
-                            />
-                        </div>
-                    )}
+                    <History
+                        history={searchHistory}
+                        handleClickToHistory={handleClickToHistory}
+                        pagination={pagination}
+                        setPagination={setPagination}
+                    />
                 </div>
             </main>
         </div>
     );
 };
 
-type Pagination = {
-    cur: number;
-    maxPerPage: number;
-    total: number;
-};
-
-const TableDemo = ({
-    data,
-    handleClickToHistory,
-    pagination,
-    setPagination,
-}: {
-    data: {
-        query: string;
-        type: string;
-        timestamp: number;
-    }[];
-    handleClickToHistory: (r: any) => void;
-    pagination: Pagination;
-    setPagination: React.Dispatch<React.SetStateAction<Pagination>>;
-}) => {
+const LogoAnimated = ({ isLoading }: { isLoading: boolean }) => {
     return (
-        <div className="relative">
-            <Table>
-                <TableCaption>A list of your recent searches.</TableCaption>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead className="">Query</TableHead>
-                        <TableHead>Created at</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Action</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {data
-                        .slice(
-                            pagination.cur * pagination.maxPerPage,
-                            (pagination.cur + 1) * pagination.maxPerPage
-                        )
-                        .map(record => (
-                            <TableRow key={record.timestamp}>
-                                <TableCell className="font-medium">{record.query}</TableCell>
-                                <TableCell className="whitespace-nowrap">
-                                    {new Date(record.timestamp).toLocaleString("en-US", {
-                                        month: "short",
-                                        day: "2-digit",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                    })}
-                                </TableCell>
-                                <TableCell>{record.type}</TableCell>
-                                <TableCell>
-                                    <Button
-                                        onClick={() => handleClickToHistory(record)}
-                                        size="sm"
-                                        variant="outline">
-                                        Restore
-                                    </Button>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                </TableBody>
-            </Table>
+        <svg
+            className={`transition-all${isLoading ? " animate-network" : ""}`}
+            width={isLoading ? 80 : 40}
+            height={isLoading ? 80 : 40}
+            viewBox="0 0 200 200"
+            xmlns="http://www.w3.org/2000/svg">
+            {/* Magnifying Glass Handle */}
+            <line
+                x1="135"
+                y1="135"
+                x2="180"
+                y2="180"
+                stroke="#60a5fa"
+                strokeWidth="12"
+                strokeLinecap="round"
+            />
 
-            <div className="space-x-2 flex justify-end align-middle my-2">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={pagination.cur <= 0}
-                    onClick={() => {
-                        setPagination(p => ({ ...p, cur: p.cur > 0 ? p.cur - 1 : p.cur }));
-                    }}>
-                    Previous
-                </Button>
+            {/* Glass Circle */}
+            <circle cx="90" cy="90" r="60" fill="none" stroke="#60a5fa" strokeWidth="8" />
 
-                <span className="bold block ring-slate-500 p-1">
-                    {pagination.cur + 1}/{Math.round(pagination.total / pagination.maxPerPage)}
-                </span>
+            {/* Network Groups */}
+            <g className={isLoading ? "animate-network" : ""}>
+                {/* Network Lines */}
+                <path
+                    d="M70,70 L110,90 L80,110 L70,70"
+                    stroke="#4299E1"
+                    strokeWidth="2"
+                    fill="none"
+                />
 
-                <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={
-                        pagination.cur >= Math.ceil(pagination.total / pagination.maxPerPage) - 1
-                    }
-                    onClick={() => {
-                        setPagination(p => ({
-                            ...p,
-                            cur:
-                                p.cur > Math.round(pagination.total / pagination.maxPerPage)
-                                    ? p.cur
-                                    : p.cur + 1,
-                        }));
-                    }}>
-                    Next
-                </Button>
-            </div>
-        </div>
+                {/* Network Nodes */}
+                <circle cx="70" cy="70" r="4" fill="#4299E1" />
+                <circle cx="110" cy="90" r="4" fill="#4299E1" />
+                <circle cx="80" cy="110" r="4" fill="#4299E1" />
+            </g>
+        </svg>
     );
 };

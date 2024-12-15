@@ -7,6 +7,7 @@ export const authRoutes = new Elysia()
         async request => {
             const body = request.body;
             const jwt = (request as any).jwt;
+            console.log("SignUp", request);
 
             const { username, password, repeatPassword: pass2, email } = body;
 
@@ -86,6 +87,7 @@ export const authRoutes = new Elysia()
     .post(
         "/api/login",
         async request => {
+            console.log("Login", request);
             const body = request.body;
             const jwt = (request as any).jwt;
             const { username, password } = body;

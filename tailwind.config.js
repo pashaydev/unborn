@@ -4,7 +4,7 @@ export default {
     theme: {
         extend: {
             colors: {
-                primary: "#3490dc", // Example primary color
+                primary: "#60a5fa", // Example primary color
                 "primary-foreground": "#ffffff", // Example primary foreground color
             },
             boxShadow: {

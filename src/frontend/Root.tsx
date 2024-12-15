@@ -11,12 +11,29 @@ const Wrapper = ({ children }: { children: ReactElement }) => {
     const heroSketchRef = useRef<HeroSketch>(null);
 
     useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth < 756) {
+                if (heroSketchRef.current) {
+                    heroSketchRef.current.dispose();
+                    heroSketchRef.current = null;
+                }
+            } else {
+                if (!heroSketchRef.current && canvas) {
+                    const heroSketch = new HeroSketch(canvas);
+                    heroSketchRef.current = heroSketch;
+                }
+            }
+        };
+
         const canvas = canvasRef.current;
-        if (canvas) {
-            const heroSketch = new HeroSketch(canvas);
-            heroSketchRef.current = heroSketch;
-        }
+
+        window.addEventListener("resize", handleResize);
+
+        // Initial check
+        handleResize();
+
         return () => {
+            window.removeEventListener("resize", handleResize);
             if (heroSketchRef.current) heroSketchRef.current.dispose();
         };
     }, []);
