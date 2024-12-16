@@ -40,6 +40,17 @@ class HeroSketch {
         this.initRenderer();
         this.initScene();
         this.initCamera();
+
+        if (
+            /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+                navigator.userAgent
+            )
+        ) {
+            this.camera.far = 500; // Reduce draw distance
+            this.camera.updateProjectionMatrix();
+            this.renderer.setPixelRatio(1); // Force lower pixel ratio
+        }
+
         this.createSnowParticles();
         this.addEventListeners();
         this.animate();
@@ -49,10 +60,12 @@ class HeroSketch {
         this.renderer = new this.THREE.WebGLRenderer({
             canvas: this.el,
             alpha: true,
-            antialias: true,
+            antialias: false,
         });
+
+        const pixelRatio = Math.min(window.devicePixelRatio, 2);
+        this.renderer.setPixelRatio(pixelRatio);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     }
 
     private initScene(): void {
@@ -70,16 +83,28 @@ class HeroSketch {
     }
 
     private createSnowParticles(): void {
-        const particleCount = 5000;
+        const isMobile = window.innerWidth < 768;
+        const aspectRatio = window.innerWidth / window.innerHeight;
+
+        const particleCount = isMobile ? 2000 : 5000;
         const geometry = new this.THREE.BufferGeometry();
         const positions = new Float32Array(particleCount * 3);
         const scales = new Float32Array(particleCount);
         const randomFactors = new Float32Array(particleCount * 3);
 
+        // Calculate the visible area based on camera FOV and distance
+        const fov = this.camera.fov;
+        const distance = this.camera.position.z; // Camera distance from origin
+        const vFov = (fov * Math.PI) / 180; // Convert to radians
+        const height = 2 * Math.tan(vFov / 2) * distance;
+        const width = height * aspectRatio;
+
         for (let i = 0; i < particleCount; i++) {
-            positions[i * 3] = (Math.random() - 0.5) * 100;
-            positions[i * 3 + 1] = (Math.random() - 0.5) * 100;
-            positions[i * 3 + 2] = (Math.random() - 0.5) * 100;
+            // Spread particles across the visible area
+            positions[i * 3] = (Math.random() - 0.5) * width; // X position
+            positions[i * 3 + 1] = (Math.random() - 0.5) * height; // Y position
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 50; // Z position (depth)
+
             scales[i] = Math.random() * 2 + 0.5;
 
             randomFactors[i * 3] = Math.random() * 2 - 1;
@@ -100,6 +125,9 @@ class HeroSketch {
                 chargePower: { value: 0.0 },
                 focusTransition: { value: 1.0 },
                 uTexture: { value: this.texture },
+                screenSize: {
+                    value: new this.THREE.Vector2(window.innerWidth, window.innerHeight),
+                },
             },
             vertexShader: `
                uniform float time;
@@ -107,10 +135,14 @@ class HeroSketch {
                 uniform float mouseRadius;
                 uniform float chargePower;
                 uniform float focusTransition;
+                uniform vec2 screenSize;
+
                 attribute float scale;
                 attribute vec3 randomFactors;
+
                 varying vec3 vColor;
                 varying float vFocusTransition;
+
 
                 void main() {
                     vec3 pos = position;
@@ -149,7 +181,8 @@ class HeroSketch {
                     // Scale points based on charge and focus
                     float chargeScale = 1.0 + chargePower * 1.5;
                     float focusScale = 1.0 + (1.0 - focusTransition) * 2.0; // Particles get bigger when blurred
-                    gl_PointSize = scale * 100.0 * chargeScale * focusScale * (1.0 / -mvPosition.z);
+                    float screenFactor = min(screenSize.x, screenSize.y) / 1000.0;
+                    gl_PointSize = scale * 100.0 * chargeScale * focusScale * screenFactor * (1.0 / -mvPosition.z);
 
                     // Pass focus transition to fragment shader
                     vFocusTransition = focusTransition;
@@ -162,24 +195,27 @@ class HeroSketch {
                 varying vec3 vColor;
                 varying float vFocusTransition;
                 uniform sampler2D uTexture;
+                uniform vec2 screenSize;
 
                 void main() {
                     vec2 center = gl_PointCoord - vec2(0.5);
                     float dist = length(center);
                     vec4 txt = texture(uTexture, gl_PointCoord);
                     
-                    // Adjust opacity based on focus state
-                    float alpha = 1.0 - smoothstep(0.3, 0.5, dist);
-                    alpha *= mix(0.3, 1.0, vFocusTransition); // Reduce opacity when blurred
                     
                     float inner = smoothstep(0.1, 0.2, dist);
-                    // vec3 color = mix(vec3(0.0), vec3(1.0), vColor.y);
                     vec3 color = txt.rgb;
-                    
+                    vec3 mixColor = vec3(0.0);
+                    float alpha = vColor.x;
+
+                    if(screenSize.x < 768.) {
+                        alpha *= 3.2;
+                    } 
+
                     // Add slight color adjustment when blurred
-                    color = mix(color, vec3(0.0), 1.0 - vFocusTransition);
+                    color = mix(color, mixColor, 1.0 - vFocusTransition);
                     
-                    gl_FragColor = vec4(color, vColor.x);
+                    gl_FragColor = vec4(color, alpha);
                 }
             `,
             transparent: true,
@@ -199,7 +235,39 @@ class HeroSketch {
         this.isCharging = false;
     }
 
+    private handleTouchStart(e: TouchEvent): void {
+        this.isCharging = true;
+        this.handleTouchMove(e); // Update position immediately
+    }
+
+    private handleTouchMove(e: TouchEvent): void {
+        if (e.touches.length > 0) {
+            const touch = e.touches[0];
+            this.mousePosition.x = (touch.clientX / window.innerWidth) * 2 - 1;
+            this.mousePosition.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+
+            this.raycaster.setFromCamera(this.mousePosition, this.camera);
+            const intersectPlane = new this.THREE.Plane(new this.THREE.Vector3(0, 0, 1), 0);
+            const mouseWorldPos = new this.THREE.Vector3();
+            this.raycaster.ray.intersectPlane(intersectPlane, mouseWorldPos);
+
+            if (this.particles.material instanceof this.THREE.ShaderMaterial) {
+                const material = this.particles.material as THREE.ShaderMaterial;
+                material.uniforms.mousePosition.value.copy(mouseWorldPos);
+            }
+        }
+    }
+    private handleTouchEnd(e: TouchEvent): void {
+        this.isCharging = false;
+    }
+
     private addEventListeners(): void {
+        window.addEventListener("touchstart", this.handleTouchStart.bind(this), {
+            passive: false,
+        });
+        window.addEventListener("touchmove", this.handleTouchMove.bind(this), { passive: false });
+        window.addEventListener("touchend", this.handleTouchEnd.bind(this), { passive: false });
+
         window.addEventListener("resize", this.onResize.bind(this));
         window.addEventListener("mousemove", this.onMouseMove.bind(this));
         window.addEventListener("mouseup", this.handleMouseUp.bind(this));
@@ -224,6 +292,11 @@ class HeroSketch {
         this.camera.aspect = width / height;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(width, height);
+
+        // Update screen size uniform
+        if (this.particles.material instanceof this.THREE.ShaderMaterial) {
+            this.particles.material.uniforms.screenSize.value.set(width, height);
+        }
     }
 
     private onMouseMove(event: MouseEvent): void {

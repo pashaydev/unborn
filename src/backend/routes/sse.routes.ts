@@ -19,9 +19,9 @@ const createSSERoutes = (deps: {
             }) => {
                 try {
                     const user = await authenticate();
-                    if (!user) return error(401, "Unauthorized");
+                    if (!user) return error(401, { message: "Unauthorized" });
                 } catch (err) {
-                    return error(401, err.message);
+                    return error(401, { message: err.message });
                 }
 
                 try {
@@ -40,7 +40,7 @@ const createSSERoutes = (deps: {
                         })
                     );
                 } catch (err) {
-                    return error(500, err.message);
+                    return error(500, { message: err.message });
                 }
             },
             {
@@ -79,9 +79,9 @@ const createSSERoutes = (deps: {
             }) => {
                 try {
                     const user = await authenticate();
-                    if (!user) return error(401, "Unauthorized");
+                    if (!user) return error(401, { message: "Unauthorized" });
                 } catch (err) {
-                    return error(401, err.message);
+                    return error(401, { message: err.message });
                 }
 
                 try {
@@ -100,7 +100,7 @@ const createSSERoutes = (deps: {
                         })
                     );
                 } catch (err) {
-                    return error(500, err.message);
+                    return error(500, { message: err.message });
                 }
             },
             {

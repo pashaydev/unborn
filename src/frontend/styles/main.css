@@ -6,6 +6,7 @@ html,
 body {
     overscroll-behavior: unset;
     background-color: black;
+    overscroll-behavior: none;
 }
 
 #root {

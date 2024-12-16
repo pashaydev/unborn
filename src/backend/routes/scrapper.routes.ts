@@ -12,7 +12,7 @@ const handleSearch = async ({ query, deps, isDeep = false, user, error }) => {
     console.log(user, "user", q, "search");
 
     if (!q) {
-        return error("Search query is required");
+        return error(422, { message: "Search query is required" });
     }
 
     const scrapper = new ScrapperHandler({
@@ -52,13 +52,13 @@ export const scrapperRoutes = (deps: {
 
                     interaction = data?.[0];
                 } catch (err) {
-                    return error(401, "Not authorize");
+                    return error(401, { message: "Not authorize" });
                 }
 
                 console.log("Search interaction: ", interaction, interaction?.length);
 
                 if (interaction && interaction?.count > 25) {
-                    return error(429, "InteractionLimit");
+                    return error(429, { message: "InteractionLimit" });
                 }
 
                 const results = await handleSearch({ query, deps, user, error });
@@ -124,13 +124,13 @@ export const scrapperRoutes = (deps: {
 
                     interaction = data?.[0];
                 } catch (err) {
-                    return error(401, "Not authorize");
+                    return error(401, { message: "Not authorize" });
                 }
 
                 console.log("Search interaction: ", interaction, interaction?.length);
 
                 if (interaction && interaction?.count > 25) {
-                    return error(429, "InteractionLimit");
+                    return error(429, { message: "InteractionLimit" });
                 }
 
                 const result = await handleSearch({ query, deps, isDeep: true, user, error });
@@ -184,11 +184,11 @@ export const scrapperRoutes = (deps: {
                         .select("*")
                         .eq("user_id", user.user_id);
 
-                    if (dbErr) return error(500, dbErr.message);
+                    if (dbErr) return error(500, { message: dbErr.message });
 
                     return data;
                 } catch (err) {
-                    return error(401, "Not authorize");
+                    return error(401, { message: "Not authorize" });
                 }
             },
             {
@@ -208,7 +208,7 @@ export const scrapperRoutes = (deps: {
                     );
                     return response.data;
                 } catch (err) {
-                    return error(500, "Failed to fetch suggestions");
+                    return error(500, { message: "Failed to fetch suggestions" });
                 }
             },
             {

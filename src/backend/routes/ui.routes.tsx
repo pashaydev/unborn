@@ -83,4 +83,30 @@ export const createUiRotes = (deps: {
                     description: "Returns the authentication page interface",
                 },
             }
+        )
+        .get(
+            "snow-example",
+            async () => {
+                return (
+                    <html lang="en">
+                        <head>
+                            <title>Shader Example</title>
+                            <meta name="theme-color" content="#0f172a"></meta>
+                            <meta name="color-scheme" content="dark"></meta>
+                            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                            <link rel="stylesheet" href="./public/main.css"></link>
+                        </head>
+                        <body>
+                            <div id="root"></div>
+                            <script src="./public/client.js" />
+                        </body>
+                    </html>
+                );
+            },
+            {
+                detail: {
+                    tags: ["UI"],
+                    summary: "Example page",
+                },
+            }
         );
