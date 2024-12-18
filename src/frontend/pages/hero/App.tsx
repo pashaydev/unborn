@@ -241,31 +241,33 @@ export const App = () => {
                                         required
                                     />
 
-                                    {suggestions.length > 0 && (
-                                        <ScrollArea className="h-[200px] mt-[0.5rem] w-full rounded-md border p-1 border-slate-700">
-                                            {suggestions.map((suggestion, idx) => {
-                                                return (
-                                                    <Button
-                                                        variant="ghost"
-                                                        onClick={() => {
-                                                            setSearchQuery(suggestion);
-                                                            setSuggestions([]);
-                                                        }}
-                                                        onKeyDown={e => {
-                                                            const key = e.key;
-                                                            if (key === "Enter") {
+                                    {suggestions.length > 0 &&
+                                        !(isDeepLoading || isLoading) &&
+                                        searchQuery.trim().length > 0 && (
+                                            <ScrollArea className="h-[200px] mt-[0.5rem] w-full rounded-md border p-1 border-slate-700">
+                                                {suggestions.map((suggestion, idx) => {
+                                                    return (
+                                                        <Button
+                                                            variant="ghost"
+                                                            onClick={() => {
                                                                 setSearchQuery(suggestion);
                                                                 setSuggestions([]);
-                                                            }
-                                                        }}
-                                                        className="cursor-pointer transition-all text-sm rounded-sm block w-full text-start"
-                                                        key={idx}>
-                                                        {suggestion}
-                                                    </Button>
-                                                );
-                                            })}
-                                        </ScrollArea>
-                                    )}
+                                                            }}
+                                                            onKeyDown={e => {
+                                                                const key = e.key;
+                                                                if (key === "Enter") {
+                                                                    setSearchQuery(suggestion);
+                                                                    setSuggestions([]);
+                                                                }
+                                                            }}
+                                                            className="cursor-pointer transition-all text-sm rounded-sm block w-full text-start"
+                                                            key={idx}>
+                                                            {suggestion}
+                                                        </Button>
+                                                    );
+                                                })}
+                                            </ScrollArea>
+                                        )}
                                 </div>
 
                                 <div className="flex align-middle items-start gap-2">
@@ -374,6 +376,7 @@ export const App = () => {
                     </div>
 
                     <History
+                        disabled={isLoading || isDeepLoading}
                         history={searchHistory}
                         handleClickToHistory={handleClickToHistory}
                         pagination={pagination}

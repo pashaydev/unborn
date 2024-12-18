@@ -1,5 +1,7 @@
 import { Elysia, t } from "elysia";
 import { databaseManager } from "../../database/db";
+import { Database } from "../../../database.types";
+import { PostgrestError } from "@supabase/supabase-js";
 
 export const authRoutes = new Elysia()
     .post(
@@ -8,7 +10,17 @@ export const authRoutes = new Elysia()
             const body = request.body;
             const jwt = (request as any).jwt;
 
-            const { username, password, repeatPassword: pass2, email } = body;
+            const {
+                username,
+                password,
+                repeatPassword: pass2,
+                email,
+            } = body as {
+                username: string;
+                password: string;
+                repeatPassword: string;
+                email: string;
+            };
 
             const ip = request.headers["x-forwarded-for"];
 
@@ -89,17 +101,37 @@ export const authRoutes = new Elysia()
         async request => {
             const body = request.body;
             const jwt = (request as any).jwt;
-            const { username, password } = body;
+            const { username, password } = body as {
+                username: string;
+                password: string;
+            };
+
+            let maxAttempts = 5;
+            let user: Database["public"]["Tables"]["users"]["Row"], error: PostgrestError;
 
             const db = await databaseManager.getDatabase();
 
             if (!db) return request.error(500, { message: "Database not reachable" });
 
-            const { data: user, error } = await db
-                .from("users")
-                .select("*")
-                .eq("username", username)
-                .single();
+            for (let i = 0; i < maxAttempts; i++) {
+                try {
+                    const { data, error: dbErr } = await db
+                        .from("users")
+                        .select("*")
+                        .eq("username", username)
+                        .single();
+
+                    error = dbErr;
+
+                    if (!error) {
+                        user = data;
+                        error = null;
+                        break;
+                    }
+                } catch (err) {
+                    console.log(err);
+                }
+            }
 
             if (error) return request.error(401, { message: "Invalid credentials" });
 

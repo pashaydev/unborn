@@ -9,31 +9,139 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      commands: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: number
+          name: string
+          once: boolean | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          name: string
+          once?: boolean | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          name?: string
+          once?: boolean | null
+        }
+        Relationships: []
+      }
       history: {
         Row: {
           bot_response: string | null
           created_at: string
           id: number
-          user_id: string
+          user_id: string | null
           user_input: string | null
         }
         Insert: {
           bot_response?: string | null
           created_at?: string
           id?: number
-          user_id: string
+          user_id?: string | null
           user_input?: string | null
         }
         Update: {
           bot_response?: string | null
           created_at?: string
           id?: number
-          user_id?: string
+          user_id?: string | null
           user_input?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      interactions: {
+        Row: {
+          action_name: string
+          count: number | null
+          created_at: string
+          id: number
+          tokens: number | null
+          user_id: string | null
+        }
+        Insert: {
+          action_name: string
+          count?: number | null
+          created_at?: string
+          id?: number
+          tokens?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          action_name?: string
+          count?: number | null
+          created_at?: string
+          id?: number
+          tokens?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interactions_action_name_fkey"
+            columns: ["action_name"]
+            isOneToOne: false
+            referencedRelation: "commands"
+            referencedColumns: ["name"]
+          },
+          {
+            foreignKeyName: "interactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      scrapper_results: {
+        Row: {
+          action_name: string | null
+          created_at: string
+          id: number
+          query: string | null
+          results: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_name?: string | null
+          created_at?: string
+          id?: number
+          query?: string | null
+          results?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_name?: string | null
+          created_at?: string
+          id?: number
+          query?: string | null
+          results?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scrapper_results_action_name_fkey"
+            columns: ["action_name"]
+            isOneToOne: false
+            referencedRelation: "commands"
+            referencedColumns: ["name"]
+          },
+          {
+            foreignKeyName: "scrapper_results_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -73,8 +181,11 @@ export type Database = {
           active_command: string | null
           chat_id: string
           created_at: string
+          email: string | null
           from: string | null
+          hash_pass: string | null
           id: number
+          ip: string | null
           user_id: string
           username: string | null
         }
@@ -82,8 +193,11 @@ export type Database = {
           active_command?: string | null
           chat_id: string
           created_at?: string
+          email?: string | null
           from?: string | null
+          hash_pass?: string | null
           id?: number
+          ip?: string | null
           user_id: string
           username?: string | null
         }
@@ -91,8 +205,11 @@ export type Database = {
           active_command?: string | null
           chat_id?: string
           created_at?: string
+          email?: string | null
           from?: string | null
+          hash_pass?: string | null
           id?: number
+          ip?: string | null
           user_id?: string
           username?: string | null
         }

@@ -50,7 +50,7 @@ export class DatabaseManager {
         }
     }
 
-    async getDatabase(): Promise<SupabaseClient | undefined> {
+    async getDatabase(): Promise<SupabaseClient<Database> | undefined> {
         if (!this.db) {
             const db = await this.initialize();
             return db;

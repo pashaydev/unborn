@@ -119,10 +119,17 @@ type HistoryProps = {
     handleClickToHistory: (r: any) => void;
     pagination: Pagination;
     setPagination: React.Dispatch<React.SetStateAction<Pagination>>;
+    disabled: boolean;
 };
 
 // Modified History component
-const History = ({ history, setPagination, pagination, handleClickToHistory }: HistoryProps) => {
+const History = ({
+    history,
+    setPagination,
+    pagination,
+    handleClickToHistory,
+    disabled,
+}: HistoryProps) => {
     const [hovered, setHovered] = useState(false);
     const [inputValue, setInputValue] = useState("");
 
@@ -138,7 +145,12 @@ const History = ({ history, setPagination, pagination, handleClickToHistory }: H
     return (
         <>
             {history.length > 0 && (
-                <div className="mt-6 bg-black p-2 relative">
+                <div
+                    className="mt-6 bg-black p-2 relative"
+                    style={{
+                        pointerEvents: disabled ? "none" : "all",
+                        cursor: disabled ? "wait" : "",
+                    }}>
                     <div
                         onMouseEnter={() => setHovered(true)}
                         onMouseLeave={() => setHovered(false)}>
@@ -148,8 +160,9 @@ const History = ({ history, setPagination, pagination, handleClickToHistory }: H
                         {(hovered || inputValue.trim().length > 0) && (
                             <div>
                                 <Input
+                                    autoFocus
                                     value={inputValue}
-                                    className="w-[10rem]"
+                                    className="w-[10rem] h-10"
                                     onChange={e => setInputValue(e.target.value)}
                                     placeholder="Search history..."
                                 />
