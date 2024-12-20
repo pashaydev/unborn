@@ -1,7 +1,7 @@
 import { join } from "path";
 import WorkerManager from "./workers/worker-manager.js";
 import { startHttpServer } from "./backend/server.ts";
-import startTelegramBot from "./bots/telegram-bot.js";
+// import startTelegramBot from "./bots/telegram-bot.js";
 
 // Get current directory and create worker paths
 const currentDir = import.meta.dir;
@@ -20,12 +20,12 @@ const config = {
     type: "start",
 };
 
-startTelegramBot(config);
+// startTelegramBot(config);
 
 // Create worker managers, each worker in the separate thread, working throw web sockets
-// const telegramWorkerManager = new WorkerManager(telegramWorkerPath, config);
-// const discordWorkerManager = new WorkerManager(discordWorkerPath, config);
-// const slackWorkerManager = new WorkerManager(slackWorkerPath, config);
+const telegramWorkerManager = new WorkerManager(telegramWorkerPath, config);
+const discordWorkerManager = new WorkerManager(discordWorkerPath, config);
+const slackWorkerManager = new WorkerManager(slackWorkerPath, config);
 
 // startTelegramBot(config);
 

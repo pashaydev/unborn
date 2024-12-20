@@ -4,15 +4,14 @@ This project is a full-stack Bun.js application featuring:
 
 -   Multi-platform bot support (Telegram, Discord, Slack)
 -   Backend API built with Elysia.js
--   Frontend React application with TypeScript
+-   Frontend Svelte application with TypeScript
 -   Supabase integration for database and authentication
 
 ## Architecture
 
 -   `/api/*` - REST API endpoints
--   `/ui/*` - Frontend React application
--   `/swagger` - Documantation
--   Each bot working in separate thread via web socket
+-   `/ui/*` - SPA Svelte
+-   `/swagger` - Documentation
 
 <img width="615" alt="Screenshot 2024-12-14 at 18 51 06" src="https://github.com/user-attachments/assets/5dd90200-226c-4ee1-b563-524dc3724a2e" />
 
@@ -136,7 +135,7 @@ npm run docker:build
 
 -   **Frontend:**
 
-    -   React
+    -   Svelte
     -   TypeScript
     -   Vite
     -   TailwindCSS

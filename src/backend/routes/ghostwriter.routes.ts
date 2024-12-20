@@ -53,7 +53,7 @@ export const ghostwriterRoutes = (deps: {
         .post(
             "ghostwriteraudio",
             async request => {
-                const body = request.body;
+                const body = request.body as any;
                 const authenticate = (request as any).authenticate;
                 const user = await authenticate();
 
@@ -152,7 +152,7 @@ export const ghostwriterRoutes = (deps: {
                 const user = await authenticate();
 
                 try {
-                    const { text } = body;
+                    const { text } = body as any;
 
                     // Validate text length
                     const maxTextLength = 1000; // Adjust as needed
