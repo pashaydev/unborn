@@ -1,14 +1,21 @@
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
 import path from "path";
 
 export default defineConfig({
-    plugins: [react()],
+    plugins: [
+        svelte({
+            compilerOptions: {
+                runes: true, // Enable Svelte 5 runes
+                // dev: process.env.NODE_ENV !== "production",
+            },
+        }),
+    ],
     build: {
         outDir: "public",
         rollupOptions: {
             input: {
-                main: "./src/frontend/Root.tsx",
+                main: "./src/frontend/main.ts",
                 favicon: "./src/frontend/assets/favicon.svg",
                 snowflake: "./src/frontend/assets/snow.webp",
             },
@@ -19,12 +26,6 @@ export default defineConfig({
             },
         },
         emptyOutDir: true,
-    },
-    compilerOptions: {
-        baseUrl: ".",
-        paths: {
-            "@/*": ["./src/frontend*"],
-        },
     },
     resolve: {
         alias: {

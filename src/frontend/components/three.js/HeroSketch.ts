@@ -295,6 +295,7 @@ class HeroSketch {
 
         // Update screen size uniform
         if (this.particles.material instanceof this.THREE.ShaderMaterial) {
+            // @ts-ignore
             this.particles.material.uniforms.screenSize.value.set(width, height);
         }
     }
@@ -312,6 +313,7 @@ class HeroSketch {
 
         // Update shader uniform
         if (this.particles.material instanceof this.THREE.ShaderMaterial) {
+            // @ts-ignore
             this.particles.material.uniforms.mousePosition.value.copy(mouseWorldPos);
         }
     }
@@ -345,8 +347,11 @@ class HeroSketch {
         this.time += 0.01;
 
         if (this.particles.material instanceof this.THREE.ShaderMaterial) {
+            // @ts-ignore
             this.particles.material.uniforms.time.value = this.time;
+            // @ts-ignore
             this.particles.material.uniforms.chargePower.value = this.chargePower;
+            // @ts-ignore
             this.particles.material.uniforms.focusTransition.value = this.focusTransition;
         }
 
@@ -358,6 +363,7 @@ class HeroSketch {
         this.scene.remove(this.particles);
         this.particles.geometry.dispose();
         if (this.particles.material instanceof this.THREE.Material) {
+            // @ts-ignore
             this.particles.material.dispose();
         }
         this.renderer.dispose();

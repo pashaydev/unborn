@@ -7,10 +7,16 @@
         "lib": ["dom", "es6"],
         "jsx": "react",
         "baseUrl": ".",
+        "target": "ESNext",
+        "useDefineForClassFields": true,
+        "module": "ESNext",
+        "allowJs": true,
+        "isolatedModules": true,
+        "moduleResolution": "bundler",
         "paths": {
-            "@/*": ["./src/frontend/*"]
+            "@/*": ["src/frontend/*"]
         }
     },
-    "include": ["./**/*.ts", "./**/*.tsx"],
+    "include": ["./**/*.ts", "./**/*.tsx", "./**/*.svelte", "./**/*.js"],
     "exclude": ["node_modules"]
 }
