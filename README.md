@@ -13,8 +13,6 @@ This project is a full-stack Bun.js application featuring:
 -   `/ui/*` - SPA Svelte
 -   `/swagger` - Documentation
 
-<img width="615" alt="Screenshot 2024-12-14 at 18 51 06" src="https://github.com/user-attachments/assets/5dd90200-226c-4ee1-b563-524dc3724a2e" />
-
 ## Installation
 
 1. Clone the repository:
